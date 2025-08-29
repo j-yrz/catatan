@@ -20,7 +20,7 @@ input, select, button { padding: 8px; border-radius: 5px; border: 1px solid #ccc
 button { cursor: pointer; }
 .btn-add { background: #007bff; color: white; border: none; }
 .btn-exp { background: #28a745; color: white; border: none; width: 100%; margin-top: 10px; }
-.btn-delete-selected { background: #dc3545; color: white; border: none; margin-bottom:10px; padding:8px 10px; border-radius:5px; }
+.btn-delete-selected { background: #dc3545; color: white; border: none; margin-bottom:10px; padding:8px 10px; border-radius:5px; display:none; }
 .table-container { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; margin-top: 5px; }
 table, th, td { border: 1px solid #ddd; }
@@ -86,7 +86,7 @@ td { text-align: center; padding: 8px; min-width: 50px; }
   <button onclick="applyFilter()">Terapkan Filter</button>
 </div>
 
-<button class="btn-delete-selected" onclick="deleteSelected()">Hapus Terpilih</button>
+<button class="btn-delete-selected" id="btnDeleteSelected" onclick="deleteSelected()">Hapus Terpilih</button>
 
 <div class="table-container">
 <table>
@@ -100,6 +100,7 @@ td { text-align: center; padding: 8px; min-width: 50px; }
     <th>Sumber Dana</th>
     <th>Pemasukan</th>
     <th>Pengeluaran</th>
+    <th>Status</th>
     <th>Aksi</th>
   </tr>
 </thead>
@@ -134,11 +135,12 @@ dateInput.value = new Date().toISOString().slice(0,10);
 
 let members = JSON.parse(localStorage.getItem("members")) || [];
 let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
-transactions = transactions.map(t => ({ ...t, amount: Number(t.amount)||0 }));
+transactions = transactions.map(t => ({ ...t, amount: Number(t.amount)||0, edited:t.edited||false }));
 
 const memberSelect = document.getElementById("memberSelect");
 const filterMember = document.getElementById("filterMember");
 const amountInput = document.getElementById("amountInput");
+const btnDeleteSelected = document.getElementById("btnDeleteSelected");
 
 amountInput.addEventListener("input", function(e){
   let cursorPos = this.selectionStart;
@@ -200,6 +202,11 @@ function renderChart(){
   document.querySelector(".expenseBar").style.width = (expenseTotal/total*100)+"%";
 }
 
+function updateDeleteSelectedButton(){
+  const anyChecked = document.querySelectorAll(".rowCheckbox:checked").length>0;
+  btnDeleteSelected.style.display = anyChecked?"inline-block":"none";
+}
+
 function renderTable(filtered=[]){
   const table = document.getElementById("transactionTable");
   table.innerHTML="";
@@ -209,7 +216,7 @@ function renderTable(filtered=[]){
     if(t.type==="pemasukan") totalIncome+=t.amount;
     else totalExpense+=t.amount;
     table.innerHTML+=`<tr>
-      <td><input type="checkbox" class="rowCheckbox" data-index="${i}"></td>
+      <td><input type="checkbox" class="rowCheckbox" data-index="${i}" onchange="updateDeleteSelectedButton()"></td>
       <td>${i+1}</td>
       <td>${t.date}</td>
       <td>${t.desc}</td>
@@ -217,6 +224,7 @@ function renderTable(filtered=[]){
       <td>${t.source||""}</td>
       <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
       <td>${t.type==="pengeluaran"?formatRupiah(t.amount):""}</td>
+      <td>${t.edited?"(diedit)":""}</td>
       <td><button class="aksi-btn" onclick="openEditModal(${i})">✏️</button></td>
     </tr>`;
   });
@@ -224,6 +232,7 @@ function renderTable(filtered=[]){
   document.getElementById("totalExpense").innerText=formatRupiah(totalExpense);
   document.getElementById("balance").innerText=formatRupiah(totalIncome-totalExpense);
   renderChart();
+  updateDeleteSelectedButton();
 }
 
 function addTransaction(){
@@ -234,7 +243,7 @@ function addTransaction(){
   const source = document.getElementById("sourceInput").value;
   const type = document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
-  transactions.push({date,desc,amount,type,member:(member==="+"||member==="-")?"":member,source});
+  transactions.push({date,desc,amount,type,member:(member==="+"||member==="-")?"":member,source,edited:false});
   saveData(); renderTable();
   document.getElementById("descInput").value="";
   document.getElementById("amountInput").value="";
@@ -256,6 +265,7 @@ function deleteSelected(){
 
 function toggleSelectAll(cb){
   document.querySelectorAll(".rowCheckbox").forEach(c=>c.checked=cb.checked);
+  updateDeleteSelectedButton();
 }
 
 function openEditModal(i){
@@ -282,6 +292,7 @@ function saveEdit(){
   t.member=document.getElementById("editMember").value;
   t.source=document.getElementById("editSource").value;
   t.type=document.getElementById("editType").value;
+  t.edited=true;
   saveData(); renderTable(); closeModal();
 }
 
