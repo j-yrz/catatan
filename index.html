@@ -29,6 +29,14 @@
     input, select, button {
       padding: 8px;
       margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+      border: none;
     }
     table {
       width: 100%;
@@ -74,7 +82,7 @@
         <option value="pemasukan">Pemasukan</option>
         <option value="pengeluaran">Pengeluaran</option>
       </select>
-      <button type="submit">Tambah Transaksi</button>
+      <button type="submit" id="btnSubmit">Tambah Transaksi</button>
     </form>
 
     <table id="tabel">
@@ -106,6 +114,7 @@
 
     const saldoEl = document.getElementById("saldo");
     const tbody = document.querySelector("#tabel tbody");
+    const btnSubmit = document.getElementById("btnSubmit");
 
     document.getElementById("formTransaksi").addEventListener("submit", e => {
       e.preventDefault();
@@ -115,17 +124,24 @@
       const tipe = document.getElementById("tipe").value;
 
       if(editIndex !== null) {
-        // Update data
-        if(data[editIndex].tipe === "pemasukan") saldo -= data[editIndex].jumlah;
-        else saldo += data[editIndex].jumlah;
-        data[editIndex] = {tanggal: tgl, deskripsi: desk, jumlah: jml, tipe};
-        editIndex = null;
-      } else {
-        data.push({tanggal: tgl, deskripsi: desk, jumlah: jml, tipe});
-      }
+        // Update data lama
+        const old = data[editIndex];
+        if(old.tipe === "pemasukan") saldo -= old.jumlah;
+        else saldo += old.jumlah;
 
-      if(tipe === "pemasukan") saldo += jml;
-      else saldo -= jml;
+        data[editIndex] = {tanggal: tgl, deskripsi: desk, jumlah: jml, tipe};
+
+        if(tipe === "pemasukan") saldo += jml;
+        else saldo -= jml;
+
+        editIndex = null;
+        btnSubmit.textContent = "Tambah Transaksi";
+      } else {
+        // Tambah baru
+        data.push({tanggal: tgl, deskripsi: desk, jumlah: jml, tipe});
+        if(tipe === "pemasukan") saldo += jml;
+        else saldo -= jml;
+      }
 
       render();
       e.target.reset();
@@ -159,6 +175,7 @@
       document.getElementById("jumlah").value = d.jumlah;
       document.getElementById("tipe").value = d.tipe;
       editIndex = i;
+      btnSubmit.textContent = "Update Transaksi";
     }
 
     function toggleEditMode(){
