@@ -20,7 +20,6 @@ input, select, button { padding: 8px; border-radius: 5px; border: 1px solid #ccc
 button { cursor: pointer; }
 .btn-add { background: #007bff; color: white; border: none; }
 .btn-exp { background: #28a745; color: white; border: none; width: 100%; margin-top: 10px; }
-.btn-member { background: #6c757d; color: white; border: none; padding: 6px 10px; margin-left: 2px; font-size: 0.9em; }
 .table-container { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
 table, th, td { border: 1px solid #ddd; }
@@ -64,11 +63,7 @@ td { text-align: center; padding: 8px; min-width: 50px; }
   <input type="text" id="descInput" placeholder="Deskripsi">
   <input type="text" id="amountInput" placeholder="Jumlah">
   
-  <div style="display:flex;align-items:center;gap:2px;flex:1 1 150px;">
-    <select id="memberSelect"></select>
-    <button class="btn-member" onclick="addMember()">Tambah</button>
-    <button class="btn-member" onclick="deleteMember()">Hapus</button>
-  </div>
+  <select id="memberSelect" onchange="memberOptionChange()"></select>
 
   <input type="text" id="sourceInput" placeholder="Sumber Dana">
   <select id="typeInput">
@@ -123,12 +118,36 @@ const memberSelect = document.getElementById("memberSelect");
 const filterMember = document.getElementById("filterMember");
 
 function renderMembers(){
-  memberSelect.innerHTML="<option value=''>Pilih anggota</option>";
-  filterMember.innerHTML='<option value="all">Semua Anggota</option>';
+  memberSelect.innerHTML="";
+  memberSelect.innerHTML+=`<option value="" disabled selected>Pilih anggota</option>`;
   members.forEach(m=>{
     memberSelect.innerHTML+=`<option value="${m}">${m}</option>`;
+  });
+  memberSelect.innerHTML+=`<option value="+">+ Tambah Anggota</option>`;
+  memberSelect.innerHTML+=`<option value="-">- Hapus Anggota</option>`;
+
+  filterMember.innerHTML='<option value="all">Semua Anggota</option>';
+  members.forEach(m=>{
     filterMember.innerHTML+=`<option value="${m}">${m}</option>`;
   });
+}
+
+function memberOptionChange(){
+  const val = memberSelect.value;
+  if(val === "+"){
+    const name = prompt("Masukkan nama anggota baru:").trim();
+    if(name && !members.includes(name)) members.push(name);
+    saveData(); renderMembers();
+  }
+  if(val === "-"){
+    if(members.length===0){ alert("Tidak ada anggota tersisa!"); return; }
+    const name = prompt("Pilih anggota untuk dihapus:\n"+members.join("\n"));
+    if(name && members.includes(name)){
+      members = members.filter(m=>m!==name);
+      saveData(); renderMembers();
+    }
+  }
+  memberSelect.value="";
 }
 
 function saveData(){ 
@@ -185,13 +204,12 @@ function addTransaction(){
   const source = document.getElementById("sourceInput").value;
   const type = document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
-  transactions.push({date,desc,amount,type,member,source});
+  transactions.push({date,desc,amount,type,member:member==="+"||member==="-"?"":member,source});
   saveData(); renderTable();
   document.getElementById("descInput").value="";
   document.getElementById("amountInput").value="";
   document.getElementById("sourceInput").value="";
   document.getElementById("typeInput").value="pemasukan";
-  memberSelect.value="";
 }
 
 function deleteTransaction(i){ if(confirm("Yakin mau hapus transaksi ini?")){ transactions.splice(i,1); saveData(); renderTable(); } }
@@ -224,24 +242,6 @@ function exportExcel(){
   a.click();
 }
 
-// Anggota
-function addMember(){
-  const name = prompt("Masukkan nama anggota baru:").trim();
-  if(!name){ alert("Nama tidak boleh kosong!"); return; }
-  if(!members.includes(name)) members.push(name);
-  saveData(); renderMembers();
-}
-
-function deleteMember(){
-  if(!memberSelect.value){ alert("Pilih anggota untuk dihapus!"); return; }
-  if(confirm(`Hapus anggota ${memberSelect.value}? Transaksi lama tetap aman.`)){
-    members = members.filter(m=>m!==memberSelect.value);
-    saveData(); renderMembers();
-    memberSelect.value="";
-  }
-}
-
-// Filter
 function applyFilter(){
   let fMember = filterMember.value;
   let fType = document.getElementById("filterType").value;
