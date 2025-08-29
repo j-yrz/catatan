@@ -57,4 +57,163 @@
       border: none;
     }
     .btn-primary { background: var(--primary); color: white; }
-    .btn-danger { background: var(--exp
+    .btn-danger { background: var(--expense); color: white; }
+    .btn-success { background: var(--income); color: white; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      text-align: center;
+    }
+    th { background: var(--primary); color: white; }
+    .income { color: var(--income); }
+    .expense { color: var(--expense); }
+    .summary {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 15px;
+    }
+    .summary div {
+      padding: 10px;
+      border-radius: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      flex: 1;
+      margin: 5px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Laporan Keuangan</h1>
+
+  <div class="summary">
+    <div><strong>Pemasukan</strong><br>Rp <span id="totalIncome">0</span></div>
+    <div><strong>Pengeluaran</strong><br>Rp <span id="totalExpense">0</span></div>
+    <div><strong>Saldo</strong><br>Rp <span id="balance">0</span></div>
+  </div>
+
+  <div class="card">
+    <input type="date" id="date" />
+    <input type="text" id="desc" placeholder="Keterangan" />
+    <input type="number" id="amount" placeholder="Jumlah (Rp)" />
+    <select id="type">
+      <option value="Pemasukan">Pemasukan</option>
+      <option value="Pengeluaran">Pengeluaran</option>
+    </select>
+    <button class="btn-primary" onclick="addTransaction()">Tambah Transaksi</button>
+    <button class="btn-danger" onclick="clearData()">Hapus Semua Data</button>
+    <button class="btn-success" onclick="exportExcel()">Export Excel</button>
+  </div>
+
+  <div class="card">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th>Keterangan</th>
+          <th>Pemasukan</th>
+          <th>Pengeluaran</th>
+          <th>Saldo</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    let transactions = [];
+
+    function addTransaction() {
+      let date = document.getElementById("date").value;
+      let desc = document.getElementById("desc").value;
+      let amount = parseFloat(document.getElementById("amount").value);
+      let type = document.getElementById("type").value;
+
+      // Kalau tanggal kosong, isi otomatis hari ini
+      if (!date) {
+        const today = new Date();
+        date = today.toISOString().split("T")[0];
+      }
+
+      if (!desc || isNaN(amount)) {
+        alert("Lengkapi keterangan dan jumlah!");
+        return;
+      }
+
+      transactions.push({ date, desc, amount, type });
+      renderTable();
+
+      document.getElementById("date").value = "";
+      document.getElementById("desc").value = "";
+      document.getElementById("amount").value = "";
+      document.getElementById("type").value = "Pemasukan";
+    }
+
+    function renderTable() {
+      let tbody = document.querySelector("#dataTable tbody");
+      tbody.innerHTML = "";
+      let income = 0, expense = 0, balance = 0;
+
+      transactions.forEach(trx => {
+        let row = tbody.insertRow();
+        row.insertCell(0).innerText = trx.date;
+        row.insertCell(1).innerText = trx.desc;
+
+        if (trx.type === "Pemasukan") {
+          row.insertCell(2).innerText = "Rp " + trx.amount.toLocaleString();
+          row.insertCell(3).innerText = "-";
+          income += trx.amount;
+          balance += trx.amount;
+        } else {
+          row.insertCell(2).innerText = "-";
+          row.insertCell(3).innerText = "Rp " + trx.amount.toLocaleString();
+          expense += trx.amount;
+          balance -= trx.amount;
+        }
+        row.insertCell(4).innerText = "Rp " + balance.toLocaleString();
+      });
+
+      document.getElementById("totalIncome").innerText = income.toLocaleString();
+      document.getElementById("totalExpense").innerText = expense.toLocaleString();
+      document.getElementById("balance").innerText = balance.toLocaleString();
+    }
+
+    function clearData() {
+      if (confirm("Hapus semua data?")) {
+        transactions = [];
+        renderTable();
+      }
+    }
+
+    function exportExcel() {
+      if (transactions.length === 0) {
+        alert("Tidak ada data untuk diexport!");
+        return;
+      }
+      let wb = XLSX.utils.book_new();
+      let ws_data = [["Tanggal", "Keterangan", "Pemasukan", "Pengeluaran", "Saldo"]];
+      let balance = 0;
+
+      transactions.forEach(trx => {
+        if (trx.type === "Pemasukan") {
+          balance += trx.amount;
+          ws_data.push([trx.date, trx.desc, trx.amount, "", balance]);
+        } else {
+          balance -= trx.amount;
+          ws_data.push([trx.date, trx.desc, "", trx.amount, balance]);
+        }
+      });
+
+      let ws = XLSX.utils.aoa_to_sheet(ws_data);
+      XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+      XLSX.writeFile(wb, "Laporan_Keuangan.xlsx");
+    }
+  </script>
+</body>
+</html>
