@@ -75,10 +75,12 @@ td { text-align: center; padding: 8px; min-width: 100px; }
 </div>
 
 <script>
+// set tanggal default hari ini
 const dateInput = document.getElementById("dateInput");
 const today = new Date().toISOString().slice(0,10);
 dateInput.value = today;
 
+// load transaksi
 let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
 transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
 
@@ -106,6 +108,7 @@ function renderTable() {
     </tr>`;
   });
 
+  // update summary otomatis
   document.getElementById("totalIncome").innerText = formatRupiah(totalIncome);
   document.getElementById("totalExpense").innerText = formatRupiah(totalExpense);
   document.getElementById("balance").innerText = formatRupiah(totalIncome - totalExpense);
@@ -131,9 +134,11 @@ function editTransaction(i){ let t=transactions[i]; let newDesc=prompt("Edit des
 
 function exportExcel(){ let csv="Tanggal,Deskripsi,Pemasukan,Pengeluaran\n"; transactions.forEach(t=>{ csv+=`${t.date},${t.desc},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`; }); let blob=new Blob([csv],{type:"text/csv"}); let url=window.URL.createObjectURL(blob); let a=document.createElement("a"); a.href=url; a.download="laporan_keuangan.csv"; a.click(); }
 
+// format input jumlah otomatis
 const amountInput=document.getElementById("amountInput");
 amountInput.addEventListener("input",(e)=>{ let cursor=e.target.selectionStart; let value=parseRupiah(e.target.value); e.target.value=value?formatRupiah(value):""; e.target.selectionStart=e.target.selectionEnd=cursor; });
 
+// render awal supaya summary muncul
 renderTable();
 </script>
 
