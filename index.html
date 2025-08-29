@@ -15,7 +15,7 @@ header h1 { margin: 5px 0; font-size: 1.5em; }
 .expense { background: #dc3545; }
 .balance { background: #007bff; }
 .container { max-width: 1000px; margin: 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-.form-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.form-group, .member-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
 input, select, button { padding: 8px; border-radius: 5px; border: 1px solid #ccc; flex: 1 1 120px; }
 button { cursor: pointer; }
 .btn-add { background: #007bff; color: white; border: none; }
@@ -35,7 +35,7 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 .filter-group { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom:10px; }
 @media(max-width:600px){
   header h1 { font-size: 1.2em; }
-  .form-group, .filter-group { flex-direction: column; }
+  .form-group, .filter-group, .member-group { flex-direction: column; }
   input, select, button { flex: 1 1 100%; }
   table, th, td { font-size: 0.9em; }
 }
@@ -57,11 +57,17 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 </header>
 
 <div class="container">
+<div class="member-group">
+  <input type="text" id="newMember" placeholder="Nama anggota baru">
+  <button onclick="addMember()">Tambah Anggota</button>
+  <button onclick="deleteMember()">Hapus Anggota</button>
+</div>
+
 <div class="form-group">
   <input type="date" id="dateInput">
   <input type="text" id="descInput" placeholder="Deskripsi">
   <input type="text" id="amountInput" placeholder="Jumlah">
-  <select id="memberSelect" onchange="checkMemberOption(this)"></select>
+  <select id="memberSelect"></select>
   <input type="text" id="sourceInput" placeholder="Sumber Dana">
   <select id="typeInput">
     <option value="pemasukan">Pemasukan</option>
@@ -104,12 +110,10 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 </div>
 
 <script>
-// Default tanggal
 const dateInput = document.getElementById("dateInput");
 const today = new Date().toISOString().slice(0,10);
 dateInput.value = today;
 
-// Load anggota & transaksi
 let members = JSON.parse(localStorage.getItem("members")) || [];
 let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
 transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
@@ -118,14 +122,12 @@ const memberSelect = document.getElementById("memberSelect");
 const filterMember = document.getElementById("filterMember");
 
 function renderMembers(){
-  memberSelect.innerHTML="";
+  memberSelect.innerHTML="<option value=''>Pilih anggota</option>";
   filterMember.innerHTML='<option value="all">Semua Anggota</option>';
   members.forEach(m=>{
     memberSelect.innerHTML+=`<option value="${m}">${m}</option>`;
     filterMember.innerHTML+=`<option value="${m}">${m}</option>`;
   });
-  memberSelect.innerHTML+=`<option value="add">➕ Tambah Anggota</option>`;
-  memberSelect.innerHTML+=`<option value="del">🗑️ Hapus Anggota</option>`;
 }
 renderMembers();
 
@@ -133,6 +135,7 @@ function saveData(){
   localStorage.setItem("transactions", JSON.stringify(transactions));
   localStorage.setItem("members", JSON.stringify(members));
 }
+
 function formatRupiah(angka){ return "Rp "+angka.toLocaleString("id-ID"); }
 function parseRupiah(str){ return Number(str.replace(/[^0-9]/g,""))||0; }
 
@@ -166,7 +169,6 @@ function renderTable(filtered=[]){
   table.innerHTML="";
   let totalIncome=0, totalExpense=0;
   const data = filtered.length?filtered:transactions;
-
   data.forEach((t,i)=>{
     if(t.type==="pemasukan") totalIncome+=t.amount;
     else totalExpense+=t.amount;
@@ -204,7 +206,7 @@ function addTransaction(){
   const date=dateInput.value||today;
   const desc=document.getElementById("descInput").value;
   const amount=parseRupiah(document.getElementById("amountInput").value);
-  const member=memberSelect.value==="add"||memberSelect.value==="del"?"":memberSelect.value;
+  const member=memberSelect.value;
   const source=document.getElementById("sourceInput").value;
   const type=document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
@@ -214,6 +216,7 @@ function addTransaction(){
   document.getElementById("amountInput").value="";
   document.getElementById("sourceInput").value="";
   document.getElementById("typeInput").value="pemasukan";
+  memberSelect.value="";
   dateInput.value=today;
 }
 
@@ -236,62 +239,4 @@ function editTransaction(i){
 
 function exportExcel(){
   let csv="Tanggal,Deskripsi,Anggota,Sumber Dana,Pemasukan,Pengeluaran\n";
-  transactions.forEach(t=>{
-    csv+=`${t.date},${t.desc},${t.member||""},${t.source||""},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`;
-  });
-  let blob=new Blob([csv],{type:"text/csv"});
-  let url=window.URL.createObjectURL(blob);
-  let a=document.createElement("a");
-  a.href=url;
-  a.download="laporan_keuangan.csv";
-  a.click();
-}
-
-// Input jumlah nyaman
-const amountInput=document.getElementById("amountInput");
-amountInput.addEventListener("input",(e)=>{
-  let value=parseRupiah(e.target.value);
-  e.target.value=value?formatRupiah(value):"";
-  e.target.setSelectionRange(e.target.value.length,e.target.value.length);
-});
-
-// Tambah/hapus anggota via menu dropdown
-function checkMemberOption(sel){
-  const value = sel.value;
-  if(value==="add") { addMember(); sel.value = members[0]||""; }
-  if(value==="del") { deleteMember(); sel.value = members[0]||""; }
-}
-
-function addMember(){
-  const name=prompt("Nama anggota baru:");
-  if(name && !members.includes(name)){ members.push(name); saveData(); renderMembers(); }
-}
-
-function deleteMember(){
-  if(members.length===0){ alert("Tidak ada anggota untuk dihapus."); return; }
-  const name = prompt("Ketik nama anggota yang ingin dihapus:", members[0]);
-  if(!name) return;
-  if(!members.includes(name)){ alert("Nama anggota tidak ditemukan."); return; }
-  if(confirm(`Hapus anggota ${name}?`)){ 
-    members = members.filter(m => m !== name); 
-    saveData(); 
-    renderMembers(); 
-    alert(`Anggota ${name} berhasil dihapus.`);
-  }
-}
-
-// Filter transaksi
-function applyFilter(){
-  const memberF=filterMember.value;
-  const typeF=document.getElementById("filterType").value;
-  const filtered = transactions.filter(t=>{
-    return (memberF==="all" || t.member===memberF) && (typeF==="all" || t.type===typeF);
-  });
-  renderTable(filtered);
-}
-
-// Render awal
-renderTable();
-</script>
-</body>
-</html>
+ 
