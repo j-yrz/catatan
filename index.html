@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Laporan Keuangan</title>
-<link rel="stylesheet" href="style.css">
 <style>
 body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 0; }
 header { text-align: center; padding: 20px 10px; }
@@ -110,7 +109,6 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 <button class="btn-exp" onclick="exportExcel()">Export Excel</button>
 </div>
 
-<!-- Modal Edit -->
 <div id="editModal" class="modal">
   <div class="modal-content">
     <h3>Edit Transaksi</h3>
@@ -128,8 +126,278 @@ td { text-align: center; padding: 8px; min-width: 50px; }
   </div>
 </div>
 
-<!-- Link ke file JavaScript eksternal (potongan 2) -->
-<script src="script.js"></script>
+<!-- SCRIPT BAGIAN 1 -->
+<script>
+// Inisialisasi tanggal default
+const dateInput = document.getElementById("dateInput");
+dateInput.value = new Date().toISOString().slice(0,10);
 
-</body>
-</html>
+// Ambil data dari localStorage atau inisialisasi baru
+let members = JSON.parse(localStorage.getItem("members")) || [];
+let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+transactions = transactions.map(t => ({
+  ...t,
+  amount: Number(t.amount)||0,
+  edited: t.edited||false,
+  editHistory: t.editHistory || []
+}));
+
+const memberSelect = document.getElementById("memberSelect");
+const filterMember = document.getElementById("filterMember");
+const amountInput = document.getElementById("amountInput");
+const btnDeleteSelected = document.getElementById("btnDeleteSelected");
+
+// Format input angka Rupiah
+amountInput.addEventListener("input", function(e){
+  let cursorPos = this.selectionStart;
+  let value = this.value.replace(/\D/g,'');
+  this.value = value? Number(value).toLocaleString("id-ID"):"";
+  this.setSelectionRange(cursorPos,cursorPos);
+});
+
+// Render anggota di dropdown
+function renderMembers(){
+  memberSelect.innerHTML="";
+  memberSelect.innerHTML+=`<option value="" disabled selected>Pilih anggota</option>`;
+  members.forEach(m=>{
+    memberSelect.innerHTML+=`<option value="${m}">${m}</option>`;
+  });
+  memberSelect.innerHTML+=`<option value="+">+ Tambah Anggota</option>`;
+  memberSelect.innerHTML+=`<option value="-">- Hapus Anggota</option>`;
+
+  const editMember = document.getElementById("editMember");
+  if(editMember){
+    editMember.innerHTML="";
+    members.forEach(m=>{editMember.innerHTML+=`<option value="${m}">${m}</option>`});
+  }
+
+  filterMember.innerHTML='<option value="all">Semua Anggota</option>';
+  members.forEach(m=>{
+    filterMember.innerHTML+=`<option value="${m}">${m}</option>`;
+  });
+}
+
+// Tambah/Hapus anggota
+function memberOptionChange(){
+  const val = memberSelect.value;
+  if(val === "+"){
+    const name = prompt("Masukkan nama anggota baru:").trim();
+    if(name && !members.includes(name)) members.push(name);
+    saveData(); renderMembers();
+  } else if(val === "-"){
+    if(members.length===0){ alert("Tidak ada anggota tersisa!"); return; }
+    const name = prompt("Pilih anggota untuk dihapus:\n"+members.join("\n"));
+    if(name && members.includes(name)){
+      members = members.filter(m=>m!==name);
+      saveData(); renderMembers();
+    }
+  }
+}
+
+// Simpan ke localStorage
+function saveData(){ 
+  localStorage.setItem("transactions", JSON.stringify(transactions));
+  localStorage.setItem("members", JSON.stringify(members));
+}
+
+// Format Rupiah
+function formatRupiah(angka){ return "Rp "+angka.toLocaleString("id-ID"); }
+function parseRupiah(str){ return Number(str.replace(/[^0-9]/g,""))||0; }
+
+// Render chart
+function renderChart(){
+  const incomeTotal = transactions.filter(t=>t.type==="pemasukan").reduce((a,b)=>a+b.amount,0);
+  const expenseTotal = transactions.filter(t=>t.type==="pengeluaran").reduce((a,b)=>a+b.amount,0);
+  const total = incomeTotal + expenseTotal || 1;
+  document.querySelector(".incomeBar").style.width = (incomeTotal/total*100)+"%";
+  document.querySelector(".expenseBar").style.width = (expenseTotal/total*100)+"%";
+}
+
+// Tampilkan/Hapus tombol Hapus Terpilih
+function updateDeleteSelectedButton(){
+  const anyChecked = document.querySelectorAll(".rowCheckbox:checked").length>0;
+  btnDeleteSelected.style.display = anyChecked?"inline-block":"none";
+}
+
+// Render tabel transaksi (sederhana, tooltip akan diisi di script 2)
+function renderTable(filtered=[]){
+  const table = document.getElementById("transactionTable");
+  table.innerHTML="";
+  const data = filtered.length?filtered:transactions;
+  data.forEach((t,i)=>{
+    table.innerHTML+=`<tr>
+      <td><input type="checkbox" class="rowCheckbox" data-index="${i}" onchange="updateDeleteSelectedButton()"></td>
+      <td>${i+1}</td>
+      <td>${t.date}</td>
+      <td>${t.desc}</td>
+      <td>${t.member||""}</td>
+      <td>${t.source||""}</td>
+      <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
+      <td>${t.type==="pengeluaran"?formatRupiah(t.amount):""}</td>
+      <td></td>
+      <td><button class="aksi-btn" onclick="openEditModal(${i})">✏️</button></td>
+    </tr>`;
+  });
+}
+
+</script>
+<!-- SCRIPT BAGIAN 2 -->
+<script>
+
+// Render tabel lengkap dengan tooltip riwayat edit
+function renderTable(filtered=[]){
+  const table = document.getElementById("transactionTable");
+  table.innerHTML="";
+  let totalIncome=0, totalExpense=0;
+  const data = filtered.length?filtered:transactions;
+  data.forEach((t,i)=>{
+    if(t.type==="pemasukan") totalIncome+=t.amount;
+    else totalExpense+=t.amount;
+
+    let tooltip = t.editHistory.map(h=>h.date + ": " + h.changes.join("; ")).join("\n");
+
+    table.innerHTML+=`<tr>
+      <td><input type="checkbox" class="rowCheckbox" data-index="${i}" onchange="updateDeleteSelectedButton()"></td>
+      <td>${i+1}</td>
+      <td>${t.date}</td>
+      <td>${t.desc}</td>
+      <td>${t.member||""}</td>
+      <td>${t.source||""}</td>
+      <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
+      <td>${t.type==="pengeluaran"?formatRupiah(t.amount):""}</td>
+      <td title="${tooltip}">${t.edited?"(diedit)":""}</td>
+      <td><button class="aksi-btn" onclick="openEditModal(${i})">✏️</button></td>
+    </tr>`;
+  });
+  document.getElementById("totalIncome").innerText=formatRupiah(totalIncome);
+  document.getElementById("totalExpense").innerText=formatRupiah(totalExpense);
+  document.getElementById("balance").innerText=formatRupiah(totalIncome-totalExpense);
+  renderChart();
+  updateDeleteSelectedButton();
+}
+
+// Tambah transaksi
+function addTransaction(){
+  const date = dateInput.value;
+  const desc = document.getElementById("descInput").value;
+  const amount = parseRupiah(document.getElementById("amountInput").value);
+  const member = memberSelect.value;
+  const source = document.getElementById("sourceInput").value;
+  const type = document.getElementById("typeInput").value;
+  if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
+  transactions.push({date,desc,amount,type,member:(member==="+"||member==="-")?"":member,source,edited:false,editHistory:[]});
+  saveData(); renderTable();
+  document.getElementById("descInput").value="";
+  document.getElementById("amountInput").value="";
+  document.getElementById("sourceInput").value="";
+  document.getElementById("typeInput").value="pemasukan";
+  memberSelect.value="";
+}
+
+// Hapus transaksi terpilih
+function deleteSelected(){
+  const checked = document.querySelectorAll(".rowCheckbox:checked");
+  if(checked.length===0){ alert("Tidak ada transaksi terpilih!"); return; }
+  if(confirm(`Hapus ${checked.length} transaksi terpilih?`)){
+    const indexes = Array.from(checked).map(c=>Number(c.dataset.index)).sort((a,b)=>b-a);
+    indexes.forEach(i=>transactions.splice(i,1));
+    saveData(); renderTable();
+    document.getElementById("selectAll").checked=false;
+  }
+}
+
+// Toggle select all
+function toggleSelectAll(cb){
+  document.querySelectorAll(".rowCheckbox").forEach(c=>c.checked=cb.checked);
+  updateDeleteSelectedButton();
+}
+
+// Modal edit
+function openEditModal(i){
+  const t = transactions[i];
+  const modal = document.getElementById("editModal");
+  modal.style.display="block";
+  document.getElementById("editDate").value=t.date;
+  document.getElementById("editDesc").value=t.desc;
+  document.getElementById("editAmount").value=t.amount.toLocaleString("id-ID");
+  document.getElementById("editMember").value=t.member||"";
+  document.getElementById("editSource").value=t.source||"";
+  document.getElementById("editType").value=t.type;
+  modal.dataset.index=i;
+}
+
+function closeModal(){ document.getElementById("editModal").style.display="none"; }
+
+// Simpan edit dengan riwayat
+function saveEdit(){
+  const i = Number(document.getElementById("editModal").dataset.index);
+  const t = transactions[i];
+  let changes = [];
+
+  if(t.date !== document.getElementById("editDate").value){
+    changes.push(`Tanggal: ${t.date} → ${document.getElementById("editDate").value}`);
+    t.date = document.getElementById("editDate").value;
+  }
+  if(t.desc !== document.getElementById("editDesc").value){
+    changes.push(`Deskripsi: ${t.desc} → ${document.getElementById("editDesc").value}`);
+    t.desc = document.getElementById("editDesc").value;
+  }
+  let newAmount = parseRupiah(document.getElementById("editAmount").value);
+  if(t.amount !== newAmount){
+    changes.push(`Jumlah: ${formatRupiah(t.amount)} → ${formatRupiah(newAmount)}`);
+    t.amount = newAmount;
+  }
+  if(t.member !== document.getElementById("editMember").value){
+    changes.push(`Anggota: ${t.member} → ${document.getElementById("editMember").value}`);
+    t.member = document.getElementById("editMember").value;
+  }
+  if(t.source !== document.getElementById("editSource").value){
+    changes.push(`Sumber: ${t.source} → ${document.getElementById("editSource").value}`);
+    t.source = document.getElementById("editSource").value;
+  }
+  if(t.type !== document.getElementById("editType").value){
+    changes.push(`Tipe: ${t.type} → ${document.getElementById("editType").value}`);
+    t.type = document.getElementById("editType").value;
+  }
+
+  if(changes.length){
+    t.edited = true;
+    t.editHistory.push({
+      date: new Date().toLocaleString("id-ID"),
+      changes
+    });
+  }
+
+  saveData(); renderTable(); closeModal();
+}
+
+// Filter transaksi
+function applyFilter(){
+  let fMember = filterMember.value;
+  let fType = document.getElementById("filterType").value;
+  let filtered = transactions.filter(t=>{
+    return (fMember==="all" || t.member===fMember) && (fType==="all" || t.type===fType);
+  });
+  renderTable(filtered);
+}
+
+// Export CSV
+function exportExcel(){
+  let csv="Tanggal,Deskripsi,Anggota,Sumber Dana,Pemasukan,Pengeluaran\n";
+  transactions.forEach(t=>{
+    csv+=`${t.date},${t.desc},${t.member||""},${t.source||""},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`;
+  });
+  let blob = new Blob([csv], { type: "text/csv" });
+  let url = window.URL.createObjectURL(blob);
+  let a = document.createElement("a");
+  a.href = url;
+  a.download = "laporan_keuangan.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// Inisialisasi awal
+renderMembers();
+renderTable();
+</script>
