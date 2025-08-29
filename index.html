@@ -32,9 +32,10 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 .bar { height: 100%; transition: width 0.8s; }
 .incomeBar { background: linear-gradient(90deg,#28a745,#7ef293); }
 .expenseBar { background: linear-gradient(90deg,#dc3545,#f78c8c); }
+.filter-group { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom:10px; }
 @media(max-width:600px){
   header h1 { font-size: 1.2em; }
-  .form-group { flex-direction: column; }
+  .form-group, .filter-group { flex-direction: column; }
   input, select, button { flex: 1 1 100%; }
   table, th, td { font-size: 0.9em; }
 }
@@ -71,6 +72,18 @@ td { text-align: center; padding: 8px; min-width: 50px; }
   <button class="btn-add" onclick="addTransaction()">Tambah Transaksi</button>
 </div>
 
+<div class="filter-group">
+  <select id="filterMember">
+    <option value="all">Semua Anggota</option>
+  </select>
+  <select id="filterType">
+    <option value="all">Semua Tipe</option>
+    <option value="pemasukan">Pemasukan</option>
+    <option value="pengeluaran">Pengeluaran</option>
+  </select>
+  <button onclick="applyFilter()">Terapkan Filter</button>
+</div>
+
 <div class="table-container">
 <table>
 <thead>
@@ -93,36 +106,44 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 </div>
 
 <script>
-// tanggal default
+// Default tanggal
 const dateInput = document.getElementById("dateInput");
 const today = new Date().toISOString().slice(0,10);
 dateInput.value = today;
 
-// load anggota dan transaksi
+// Load anggota & transaksi
 let members = JSON.parse(localStorage.getItem("members")) || [];
 let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
 transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
 
 const memberSelect = document.getElementById("memberSelect");
+const filterMember = document.getElementById("filterMember");
 function renderMembers(){
   memberSelect.innerHTML="";
-  members.forEach(m=>{ memberSelect.innerHTML+=`<option value="${m}">${m}</option>` });
+  filterMember.innerHTML='<option value="all">Semua Anggota</option>';
+  members.forEach(m=>{
+    memberSelect.innerHTML+=`<option value="${m}">${m}</option>`;
+    filterMember.innerHTML+=`<option value="${m}">${m}</option>`;
+  });
 }
 renderMembers();
 
-function saveData() { localStorage.setItem("transactions", JSON.stringify(transactions)); localStorage.setItem("members", JSON.stringify(members)); }
-function formatRupiah(angka) { return "Rp " + angka.toLocaleString("id-ID"); }
-function parseRupiah(str) { return Number(str.replace(/[^0-9]/g, "")) || 0; }
+function saveData(){ 
+  localStorage.setItem("transactions", JSON.stringify(transactions));
+  localStorage.setItem("members", JSON.stringify(members));
+}
+function formatRupiah(angka){ return "Rp "+angka.toLocaleString("id-ID"); }
+function parseRupiah(str){ return Number(str.replace(/[^0-9]/g,""))||0; }
 
 function animateCard(id){
   const el = document.getElementById(id);
-  el.style.transition = "transform 0.3s, background-color 0.8s";
-  el.style.transform = "scale(1.1)";
+  el.style.transition="transform 0.3s, background-color 0.8s";
+  el.style.transform="scale(1.1)";
   let color;
-  if(id==="totalIncome") color = "#71d88a";
-  if(id==="totalExpense") color = "#f28c8c";
-  if(id==="balance") color = "#68b0f0";
-  el.style.backgroundColor = color;
+  if(id==="totalIncome") color="#71d88a";
+  if(id==="totalExpense") color="#f28c8c";
+  if(id==="balance") color="#68b0f0";
+  el.style.backgroundColor=color;
   setTimeout(()=>{
     el.style.transform="scale(1)";
     if(id==="totalIncome") el.style.backgroundColor="#28a745";
@@ -139,20 +160,21 @@ function renderChart(){
   document.querySelector(".expenseBar").style.width = (expenseTotal/total*100)+"%";
 }
 
-function renderTable() {
+function renderTable(filtered=[]){
   const table = document.getElementById("transactionTable");
-  table.innerHTML = "";
-  let totalIncome = 0, totalExpense = 0;
+  table.innerHTML="";
+  let totalIncome=0, totalExpense=0;
+  const data = filtered.length?filtered:transactions;
 
-  transactions.forEach((t,i)=>{
+  data.forEach((t,i)=>{
     if(t.type==="pemasukan") totalIncome+=t.amount;
     else totalExpense+=t.amount;
-    table.innerHTML += `<tr>
+    table.innerHTML+=`<tr>
       <td>${i+1}</td>
       <td>${t.date}</td>
       <td>${t.desc}</td>
-      <td>${t.member || ""}</td>
-      <td>${t.source || ""}</td>
+      <td>${t.member||""}</td>
+      <td>${t.source||""}</td>
       <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
       <td>${t.type==="pengeluaran"?formatRupiah(t.amount):""}</td>
       <td>
@@ -162,4 +184,98 @@ function renderTable() {
     </tr>`;
   });
 
-  const oldIncome = document
+  const oldIncome=document.getElementById("totalIncome").innerText;
+  const oldExpense=document.getElementById("totalExpense").innerText;
+  const oldBalance=document.getElementById("balance").innerText;
+
+  document.getElementById("totalIncome").innerText=formatRupiah(totalIncome);
+  document.getElementById("totalExpense").innerText=formatRupiah(totalExpense);
+  document.getElementById("balance").innerText=formatRupiah(totalIncome-totalExpense);
+
+  if(formatRupiah(totalIncome)!==oldIncome) animateCard("totalIncome");
+  if(formatRupiah(totalExpense)!==oldExpense) animateCard("totalExpense");
+  if(formatRupiah(totalIncome-totalExpense)!==oldBalance) animateCard("balance");
+
+  renderChart();
+}
+
+function addTransaction(){
+  const date=dateInput.value||today;
+  const desc=document.getElementById("descInput").value;
+  const amount=parseRupiah(document.getElementById("amountInput").value);
+  const member=memberSelect.value;
+  const source=document.getElementById("sourceInput").value;
+  const type=document.getElementById("typeInput").value;
+  if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
+  transactions.push({date,desc,amount,type,member,source});
+  saveData(); renderTable();
+  document.getElementById("descInput").value="";
+  document.getElementById("amountInput").value="";
+  document.getElementById("sourceInput").value="";
+  document.getElementById("typeInput").value="pemasukan";
+  dateInput.value=today;
+}
+
+function deleteTransaction(i){ if(confirm("Yakin mau hapus transaksi ini?")){ transactions.splice(i,1); saveData(); renderTable(); } }
+
+function editTransaction(i){
+  let t=transactions[i];
+  let newDesc=prompt("Edit deskripsi:",t.desc);
+  let newAmount=prompt("Edit jumlah:",t.amount);
+  let newMember=prompt("Edit anggota:",t.member||"");
+  let newSource=prompt("Edit sumber dana:",t.source||"");
+  if(newDesc!==null && newAmount!==null){
+    transactions[i].desc=newDesc;
+    transactions[i].amount=parseRupiah(newAmount.toString());
+    transactions[i].member=newMember;
+    transactions[i].source=newSource;
+    saveData(); renderTable();
+  }
+}
+
+function exportExcel(){
+  let csv="Tanggal,Deskripsi,Anggota,Sumber Dana,Pemasukan,Pengeluaran\n";
+  transactions.forEach(t=>{
+    csv+=`${t.date},${t.desc},${t.member||""},${t.source||""},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`;
+  });
+  let blob=new Blob([csv],{type:"text/csv"});
+  let url=window.URL.createObjectURL(blob);
+  let a=document.createElement("a");
+  a.href=url;
+  a.download="laporan_keuangan.csv";
+  a.click();
+}
+
+// Input jumlah nyaman
+const amountInput=document.getElementById("amountInput");
+amountInput.addEventListener("input",(e)=>{
+  let value=parseRupiah(e.target.value);
+  e.target.value=value?formatRupiah(value):"";
+  e.target.setSelectionRange(e.target.value.length,e.target.value.length);
+});
+
+// Tambah/hapus anggota
+function addMember(){
+  const name=prompt("Nama anggota baru:");
+  if(name && !members.includes(name)){ members.push(name); saveData(); renderMembers(); }
+}
+function deleteMember(){
+  const name=memberSelect.value;
+  if(name && confirm(`Hapus anggota ${name}?`)){ members=members.filter(m=>m!==name); saveData(); renderMembers(); }
+}
+
+// Filter transaksi
+function applyFilter(){
+  const memberF=filterMember.value;
+  const typeF=document.getElementById("filterType").value;
+  const filtered = transactions.filter(t=>{
+    return (memberF==="all" || t.member===memberF) && (typeF==="all" || t.type===typeF);
+  });
+  renderTable(filtered);
+}
+
+// Render awal
+renderTable();
+</script>
+</body>
+</html>
