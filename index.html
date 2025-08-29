@@ -15,11 +15,12 @@ header h1 { margin: 5px 0; font-size: 1.5em; }
 .expense { background: #dc3545; }
 .balance { background: #007bff; }
 .container { max-width: 1000px; margin: 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-.form-group, .member-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.form-group, .filter-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
 input, select, button { padding: 8px; border-radius: 5px; border: 1px solid #ccc; flex: 1 1 120px; }
 button { cursor: pointer; }
 .btn-add { background: #007bff; color: white; border: none; }
 .btn-exp { background: #28a745; color: white; border: none; width: 100%; margin-top: 10px; }
+.btn-member { background: #6c757d; color: white; border: none; padding: 6px 10px; margin-left: 2px; font-size: 0.9em; }
 .table-container { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; margin-top: 15px; }
 table, th, td { border: 1px solid #ddd; }
@@ -35,7 +36,7 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 .filter-group { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom:10px; }
 @media(max-width:600px){
   header h1 { font-size: 1.2em; }
-  .form-group, .filter-group, .member-group { flex-direction: column; }
+  .form-group, .filter-group { flex-direction: column; }
   input, select, button { flex: 1 1 100%; }
   table, th, td { font-size: 0.9em; }
 }
@@ -57,19 +58,18 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 </header>
 
 <div class="container">
-<div class="member-group">
-  <input type="text" id="deleteMemberInput" placeholder="Ketik nama anggota">
-  <select id="deleteMemberDropdown"></select>
-  <button onclick="deleteMember()">Hapus Anggota</button>
-  <input type="text" id="newMember" placeholder="Nama anggota baru">
-  <button onclick="addMember()">Tambah Anggota</button>
-</div>
 
 <div class="form-group">
   <input type="date" id="dateInput">
   <input type="text" id="descInput" placeholder="Deskripsi">
   <input type="text" id="amountInput" placeholder="Jumlah">
-  <select id="memberSelect"></select>
+  
+  <div style="display:flex;align-items:center;gap:2px;flex:1 1 150px;">
+    <select id="memberSelect"></select>
+    <button class="btn-member" onclick="addMember()">Tambah</button>
+    <button class="btn-member" onclick="deleteMember()">Hapus</button>
+  </div>
+
   <input type="text" id="sourceInput" placeholder="Sumber Dana">
   <select id="typeInput">
     <option value="pemasukan">Pemasukan</option>
@@ -121,8 +121,6 @@ transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
 
 const memberSelect = document.getElementById("memberSelect");
 const filterMember = document.getElementById("filterMember");
-const deleteDropdown = document.getElementById("deleteMemberDropdown");
-const deleteInput = document.getElementById("deleteMemberInput");
 
 function renderMembers(){
   memberSelect.innerHTML="<option value=''>Pilih anggota</option>";
@@ -130,10 +128,6 @@ function renderMembers(){
   members.forEach(m=>{
     memberSelect.innerHTML+=`<option value="${m}">${m}</option>`;
     filterMember.innerHTML+=`<option value="${m}">${m}</option>`;
-  });
-  deleteDropdown.innerHTML="<option value=''>Pilih (max 3)</option>";
-  members.slice(-3).forEach(m=>{
-    deleteDropdown.innerHTML+=`<option value="${m}">${m}</option>`;
   });
 }
 
@@ -144,23 +138,6 @@ function saveData(){
 
 function formatRupiah(angka){ return "Rp "+angka.toLocaleString("id-ID"); }
 function parseRupiah(str){ return Number(str.replace(/[^0-9]/g,""))||0; }
-
-function animateCard(id){
-  const el = document.getElementById(id);
-  el.style.transition="transform 0.3s, background-color 0.8s";
-  el.style.transform="scale(1.1)";
-  let color;
-  if(id==="totalIncome") color="#71d88a";
-  if(id==="totalExpense") color="#f28c8c";
-  if(id==="balance") color="#68b0f0";
-  el.style.backgroundColor=color;
-  setTimeout(()=>{
-    el.style.transform="scale(1)";
-    if(id==="totalIncome") el.style.backgroundColor="#28a745";
-    if(id==="totalExpense") el.style.backgroundColor="#dc3545";
-    if(id==="balance") el.style.backgroundColor="#007bff";
-  },500);
-}
 
 function renderChart(){
   const incomeTotal = transactions.filter(t=>t.type==="pemasukan").reduce((a,b)=>a+b.amount,0);
@@ -249,20 +226,18 @@ function exportExcel(){
 
 // Anggota
 function addMember(){
-  const name = document.getElementById("newMember").value.trim();
-  if(!name){ alert("Masukkan nama anggota!"); return; }
+  const name = prompt("Masukkan nama anggota baru:").trim();
+  if(!name){ alert("Nama tidak boleh kosong!"); return; }
   if(!members.includes(name)) members.push(name);
-  document.getElementById("newMember").value="";
   saveData(); renderMembers();
 }
 
 function deleteMember(){
-  let name = deleteInput.value.trim() || deleteDropdown.value;
-  if(!name){ alert("Pilih atau ketik nama anggota!"); return; }
-  if(!members.includes(name)){ alert("Nama anggota tidak ditemukan!"); return; }
-  if(confirm(`Hapus anggota ${name}? Transaksi lama tetap aman.`)){
-    members = members.filter(m=>m!==name);
+  if(!memberSelect.value){ alert("Pilih anggota untuk dihapus!"); return; }
+  if(confirm(`Hapus anggota ${memberSelect.value}? Transaksi lama tetap aman.`)){
+    members = members.filter(m=>m!==memberSelect.value);
     saveData(); renderMembers();
+    memberSelect.value="";
   }
 }
 
@@ -280,5 +255,6 @@ function applyFilter(){
 renderMembers();
 renderTable();
 </script>
+
 </body>
 </html>
