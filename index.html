@@ -20,19 +20,22 @@ input, select, button { padding: 8px; border-radius: 5px; border: 1px solid #ccc
 button { cursor: pointer; }
 .btn-add { background: #007bff; color: white; border: none; }
 .btn-exp { background: #28a745; color: white; border: none; width: 100%; margin-top: 10px; }
+.btn-delete-selected { background: #dc3545; color: white; border: none; margin-bottom:10px; padding:8px 10px; border-radius:5px; }
 .table-container { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+table { width: 100%; border-collapse: collapse; margin-top: 5px; }
 table, th, td { border: 1px solid #ddd; }
 th { background: #28a745; color: white; padding: 10px; min-width: 50px; }
 td { text-align: center; padding: 8px; min-width: 50px; }
-.aksi-btn { cursor: pointer; border: none; background: none; font-size: 16px; margin: 0 3px; }
-.aksi-btn.edit { color: #007bff; }
-.aksi-btn.delete { color: #dc3545; }
+.aksi-btn { cursor: pointer; border: none; background: none; font-size: 16px; margin: 0 3px; color:#007bff; }
 #chartContainer { margin-top: 20px; height: 30px; display: flex; border-radius: 5px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .bar { height: 100%; transition: width 0.8s; }
 .incomeBar { background: linear-gradient(90deg,#28a745,#7ef293); }
 .expenseBar { background: linear-gradient(90deg,#dc3545,#f78c8c); }
 .filter-group { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom:10px; }
+.modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background: rgba(0,0,0,0.4); }
+.modal-content { background:white; margin:10% auto; padding:20px; border-radius:8px; width:90%; max-width:400px; box-shadow:0 2px 5px rgba(0,0,0,0.3); }
+.modal-content input, .modal-content select { width:100%; margin-bottom:10px; }
+.modal-content button { width:100%; margin-top:5px; }
 @media(max-width:600px){
   header h1 { font-size: 1.2em; }
   .form-group, .filter-group { flex-direction: column; }
@@ -62,9 +65,7 @@ td { text-align: center; padding: 8px; min-width: 50px; }
   <input type="date" id="dateInput">
   <input type="text" id="descInput" placeholder="Deskripsi">
   <input type="text" id="amountInput" placeholder="Jumlah">
-  
   <select id="memberSelect" onchange="memberOptionChange()"></select>
-
   <input type="text" id="sourceInput" placeholder="Sumber Dana">
   <select id="typeInput">
     <option value="pemasukan">Pemasukan</option>
@@ -85,10 +86,13 @@ td { text-align: center; padding: 8px; min-width: 50px; }
   <button onclick="applyFilter()">Terapkan Filter</button>
 </div>
 
+<button class="btn-delete-selected" onclick="deleteSelected()">Hapus Terpilih</button>
+
 <div class="table-container">
 <table>
 <thead>
   <tr>
+    <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
     <th>No</th>
     <th>Tanggal</th>
     <th>Deskripsi</th>
@@ -106,24 +110,41 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 <button class="btn-exp" onclick="exportExcel()">Export Excel</button>
 </div>
 
+<!-- Modal Edit -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h3>Edit Transaksi</h3>
+    <input type="date" id="editDate">
+    <input type="text" id="editDesc" placeholder="Deskripsi">
+    <input type="text" id="editAmount" placeholder="Jumlah">
+    <select id="editMember"></select>
+    <input type="text" id="editSource" placeholder="Sumber Dana">
+    <select id="editType">
+      <option value="pemasukan">Pemasukan</option>
+      <option value="pengeluaran">Pengeluaran</option>
+    </select>
+    <button onclick="saveEdit()">Simpan</button>
+    <button onclick="closeModal()">Batal</button>
+  </div>
+</div>
+
 <script>
 const dateInput = document.getElementById("dateInput");
 dateInput.value = new Date().toISOString().slice(0,10);
 
 let members = JSON.parse(localStorage.getItem("members")) || [];
 let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
-transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
+transactions = transactions.map(t => ({ ...t, amount: Number(t.amount)||0 }));
 
 const memberSelect = document.getElementById("memberSelect");
 const filterMember = document.getElementById("filterMember");
 const amountInput = document.getElementById("amountInput");
 
-// Format Rupiah saat mengetik
 amountInput.addEventListener("input", function(e){
   let cursorPos = this.selectionStart;
   let value = this.value.replace(/\D/g,'');
-  this.value = value ? Number(value).toLocaleString("id-ID") : "";
-  this.setSelectionRange(cursorPos, cursorPos);
+  this.value = value? Number(value).toLocaleString("id-ID"):"";
+  this.setSelectionRange(cursorPos,cursorPos);
 });
 
 function renderMembers(){
@@ -134,6 +155,12 @@ function renderMembers(){
   });
   memberSelect.innerHTML+=`<option value="+">+ Tambah Anggota</option>`;
   memberSelect.innerHTML+=`<option value="-">- Hapus Anggota</option>`;
+
+  const editMember = document.getElementById("editMember");
+  if(editMember){
+    editMember.innerHTML="";
+    members.forEach(m=>{editMember.innerHTML+=`<option value="${m}">${m}</option>`});
+  }
 
   filterMember.innerHTML='<option value="all">Semua Anggota</option>';
   members.forEach(m=>{
@@ -154,10 +181,6 @@ function memberOptionChange(){
       members = members.filter(m=>m!==name);
       saveData(); renderMembers();
     }
-  } 
-  // Tidak reset dropdown saat pilih anggota biasa
-  if(val !== "+" && val !== "-"){
-    // tetap bisa dipilih untuk transaksi
   }
 }
 
@@ -186,6 +209,7 @@ function renderTable(filtered=[]){
     if(t.type==="pemasukan") totalIncome+=t.amount;
     else totalExpense+=t.amount;
     table.innerHTML+=`<tr>
+      <td><input type="checkbox" class="rowCheckbox" data-index="${i}"></td>
       <td>${i+1}</td>
       <td>${t.date}</td>
       <td>${t.desc}</td>
@@ -193,17 +217,12 @@ function renderTable(filtered=[]){
       <td>${t.source||""}</td>
       <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
       <td>${t.type==="pengeluaran"?formatRupiah(t.amount):""}</td>
-      <td>
-        <button class="aksi-btn edit" onclick="editTransaction(${i})">✏️</button>
-        <button class="aksi-btn delete" onclick="deleteTransaction(${i})">🗑️</button>
-      </td>
+      <td><button class="aksi-btn" onclick="openEditModal(${i})">✏️</button></td>
     </tr>`;
   });
-
   document.getElementById("totalIncome").innerText=formatRupiah(totalIncome);
   document.getElementById("totalExpense").innerText=formatRupiah(totalExpense);
   document.getElementById("balance").innerText=formatRupiah(totalIncome-totalExpense);
-
   renderChart();
 }
 
@@ -221,24 +240,58 @@ function addTransaction(){
   document.getElementById("amountInput").value="";
   document.getElementById("sourceInput").value="";
   document.getElementById("typeInput").value="pemasukan";
-  memberSelect.value=""; // reset setelah tambah transaksi
+  memberSelect.value="";
 }
 
-function deleteTransaction(i){ if(confirm("Yakin mau hapus transaksi ini?")){ transactions.splice(i,1); saveData(); renderTable(); } }
-
-function editTransaction(i){
-  let t = transactions[i];
-  let newDesc = prompt("Edit deskripsi:", t.desc);
-  let newAmount = prompt("Edit jumlah:", t.amount);
-  let newMember = prompt("Edit anggota:", t.member||"");
-  let newSource = prompt("Edit sumber dana:", t.source||"");
-  if(newDesc!==null && newAmount!==null){
-    transactions[i].desc=newDesc;
-    transactions[i].amount=parseRupiah(newAmount.toString());
-    transactions[i].member=newMember;
-    transactions[i].source=newSource;
+function deleteSelected(){
+  const checked = document.querySelectorAll(".rowCheckbox:checked");
+  if(checked.length===0){ alert("Tidak ada transaksi terpilih!"); return; }
+  if(confirm(`Hapus ${checked.length} transaksi terpilih?`)){
+    const indexes = Array.from(checked).map(c=>Number(c.dataset.index)).sort((a,b)=>b-a);
+    indexes.forEach(i=>transactions.splice(i,1));
     saveData(); renderTable();
+    document.getElementById("selectAll").checked=false;
   }
+}
+
+function toggleSelectAll(cb){
+  document.querySelectorAll(".rowCheckbox").forEach(c=>c.checked=cb.checked);
+}
+
+function openEditModal(i){
+  const t = transactions[i];
+  const modal = document.getElementById("editModal");
+  modal.style.display="block";
+  document.getElementById("editDate").value=t.date;
+  document.getElementById("editDesc").value=t.desc;
+  document.getElementById("editAmount").value=t.amount.toLocaleString("id-ID");
+  document.getElementById("editMember").value=t.member||"";
+  document.getElementById("editSource").value=t.source||"";
+  document.getElementById("editType").value=t.type;
+  modal.dataset.index=i;
+}
+
+function closeModal(){ document.getElementById("editModal").style.display="none"; }
+
+function saveEdit(){
+  const i = Number(document.getElementById("editModal").dataset.index);
+  const t = transactions[i];
+  t.date=document.getElementById("editDate").value;
+  t.desc=document.getElementById("editDesc").value;
+  t.amount=parseRupiah(document.getElementById("editAmount").value);
+  t.member=document.getElementById("editMember").value;
+  t.source=document.getElementById("editSource").value;
+  t.type=document.getElementById("editType").value;
+  saveData(); renderTable(); closeModal();
+}
+
+function applyFilter(){
+  let fMember = filterMember.value;
+  let fType = document.getElementById("filterType").value;
+  let filtered = transactions.filter(t=>{
+    return (fMember==="all" || t.member===fMember) && (fType==="all" || t.type===fType);
+  });
+  renderTable(filtered);
 }
 
 function exportExcel(){
@@ -252,15 +305,6 @@ function exportExcel(){
   a.href = url;
   a.download = "laporan_keuangan.csv";
   a.click();
-}
-
-function applyFilter(){
-  let fMember = filterMember.value;
-  let fType = document.getElementById("filterType").value;
-  let filtered = transactions.filter(t=>{
-    return (fMember==="all" || t.member===fMember) && (fType==="all" || t.type===fType);
-  });
-  renderTable(filtered);
 }
 
 // Init
