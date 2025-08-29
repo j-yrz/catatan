@@ -1,219 +1,235 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Laporan Keuangan</title>
   <style>
-    :root {
-      --bg: #f9f9f9;
-      --text: #222;
-      --card: #fff;
-      --border: #ccc;
-      --primary: #007bff;
-      --income: #28a745;
-      --expense: #dc3545;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #121212;
-        --text: #eaeaea;
-        --card: #1e1e1e;
-        --border: #333;
-        --primary: #0d6efd;
-        --income: #4caf50;
-        --expense: #f44336;
-      }
-    }
     body {
       font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #fff;
       margin: 0;
       padding: 20px;
-      background: var(--bg);
-      color: var(--text);
     }
     h1 {
-      text-align: center;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .summary {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
     }
     .card {
-      background: var(--card);
+      background: #1e1e1e;
       padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      margin-bottom: 20px;
-      border: 1px solid var(--border);
+      border-radius: 8px;
+      flex: 1;
+      text-align: center;
     }
-    input, select, button {
+    .card h3 {
+      margin: 0;
+      font-size: 16px;
+      color: #aaa;
+    }
+    .card p {
+      margin: 5px 0 0;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .form-container {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .form-container input, .form-container select {
       width: 100%;
       padding: 10px;
-      margin: 5px 0;
+      margin-bottom: 10px;
       border-radius: 5px;
-      border: 1px solid var(--border);
-      font-size: 14px;
-    }
-    button {
-      cursor: pointer;
-      font-weight: bold;
       border: none;
     }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-danger { background: var(--expense); color: white; }
-    .btn-success { background: var(--income); color: white; }
+    button {
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    .btn-primary { background: #007bff; }
+    .btn-danger { background: #dc3545; }
+    .btn-success { background: #28a745; }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
     }
     th, td {
-      border: 1px solid var(--border);
+      border: 1px solid #333;
       padding: 8px;
       text-align: center;
     }
-    th { background: var(--primary); color: white; }
-    .income { color: var(--income); }
-    .expense { color: var(--expense); }
-    .summary {
-      display: flex;
-      justify-content: space-around;
-      margin-bottom: 15px;
+    th {
+      background: #007bff;
     }
-    .summary div {
-      padding: 10px;
-      border-radius: 8px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      flex: 1;
-      margin: 5px;
-      text-align: center;
+    .hidden {
+      display: none;
+    }
+    .edit-mode {
+      border: 2px solid #ffc107;
+    }
+    .icon-btn {
+      cursor: pointer;
+      font-size: 14px;
+      margin-left: 5px;
     }
   </style>
 </head>
 <body>
-  <h1>📊 Laporan Keuangan</h1>
-
+  <h1>📊 Laporan Keuangan <span id="editToggle" class="icon-btn">✏️</span></h1>
   <div class="summary">
-    <div><strong>Pemasukan</strong><br>Rp <span id="totalIncome">0</span></div>
-    <div><strong>Pengeluaran</strong><br>Rp <span id="totalExpense">0</span></div>
-    <div><strong>Saldo</strong><br>Rp <span id="balance">0</span></div>
+    <div class="card">
+      <h3>Pemasukan</h3>
+      <p id="totalIncome">Rp 0</p>
+    </div>
+    <div class="card">
+      <h3>Pengeluaran</h3>
+      <p id="totalExpense">Rp 0</p>
+    </div>
+    <div class="card">
+      <h3>Saldo</h3>
+      <p id="balance">Rp 0</p>
+    </div>
   </div>
 
-  <div class="card">
-    <input type="date" id="date" />
-    <input type="text" id="desc" placeholder="Keterangan" />
-    <input type="number" id="amount" placeholder="Jumlah (Rp)" />
+  <div class="form-container">
+    <input type="text" id="desc" placeholder="Keterangan">
+    <input type="number" id="amount" placeholder="Jumlah (Rp)">
     <select id="type">
-      <option value="Pemasukan">Pemasukan</option>
-      <option value="Pengeluaran">Pengeluaran</option>
+      <option value="income">Pemasukan</option>
+      <option value="expense">Pengeluaran</option>
     </select>
     <button class="btn-primary" onclick="addTransaction()">Tambah Transaksi</button>
-    <button class="btn-danger" onclick="clearData()">Hapus Semua Data</button>
     <button class="btn-success" onclick="exportExcel()">Export Excel</button>
   </div>
 
-  <div class="card">
-    <table id="dataTable">
-      <thead>
-        <tr>
-          <th>Tanggal</th>
-          <th>Keterangan</th>
-          <th>Pemasukan</th>
-          <th>Pengeluaran</th>
-          <th>Saldo</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <div id="actionMenu" class="hidden">
+    <button class="btn-danger" onclick="deleteSelected()">Hapus Terpilih</button>
+    <button class="btn-primary" onclick="editSelected()">Edit Terpilih</button>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <table id="transactionTable">
+    <thead>
+      <tr>
+        <th class="hidden">✔</th>
+        <th>Tanggal</th>
+        <th>Keterangan</th>
+        <th>Pemasukan</th>
+        <th>Pengeluaran</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
   <script>
-    let transactions = [];
-
-    function addTransaction() {
-      let date = document.getElementById("date").value;
-      let desc = document.getElementById("desc").value;
-      let amount = parseFloat(document.getElementById("amount").value);
-      let type = document.getElementById("type").value;
-
-      // Kalau tanggal kosong, isi otomatis hari ini
-      if (!date) {
-        const today = new Date();
-        date = today.toISOString().split("T")[0];
-      }
-
-      if (!desc || isNaN(amount)) {
-        alert("Lengkapi keterangan dan jumlah!");
-        return;
-      }
-
-      transactions.push({ date, desc, amount, type });
-      renderTable();
-
-      document.getElementById("date").value = "";
-      document.getElementById("desc").value = "";
-      document.getElementById("amount").value = "";
-      document.getElementById("type").value = "Pemasukan";
-    }
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+    let editMode = false;
 
     function renderTable() {
-      let tbody = document.querySelector("#dataTable tbody");
+      const tbody = document.querySelector("#transactionTable tbody");
       tbody.innerHTML = "";
-      let income = 0, expense = 0, balance = 0;
+      let income = 0, expense = 0;
 
-      transactions.forEach(trx => {
-        let row = tbody.insertRow();
-        row.insertCell(0).innerText = trx.date;
-        row.insertCell(1).innerText = trx.desc;
+      transactions.forEach((t, index) => {
+        const row = document.createElement("tr");
+        if (editMode) row.classList.add("edit-mode");
 
-        if (trx.type === "Pemasukan") {
-          row.insertCell(2).innerText = "Rp " + trx.amount.toLocaleString();
-          row.insertCell(3).innerText = "-";
-          income += trx.amount;
-          balance += trx.amount;
-        } else {
-          row.insertCell(2).innerText = "-";
-          row.insertCell(3).innerText = "Rp " + trx.amount.toLocaleString();
-          expense += trx.amount;
-          balance -= trx.amount;
-        }
-        row.insertCell(4).innerText = "Rp " + balance.toLocaleString();
+        row.innerHTML = `
+          <td class="${editMode ? '' : 'hidden'}">
+            <input type="checkbox" class="row-check" data-index="${index}">
+          </td>
+          <td>${t.date}</td>
+          <td>${t.desc}</td>
+          <td>${t.type === 'income' ? 'Rp ' + t.amount.toLocaleString() : '-'}</td>
+          <td>${t.type === 'expense' ? 'Rp ' + t.amount.toLocaleString() : '-'}</td>
+        `;
+        tbody.appendChild(row);
+
+        if (t.type === "income") income += t.amount;
+        else expense += t.amount;
       });
 
-      document.getElementById("totalIncome").innerText = income.toLocaleString();
-      document.getElementById("totalExpense").innerText = expense.toLocaleString();
-      document.getElementById("balance").innerText = balance.toLocaleString();
+      document.getElementById("totalIncome").innerText = "Rp " + income.toLocaleString();
+      document.getElementById("totalExpense").innerText = "Rp " + expense.toLocaleString();
+      document.getElementById("balance").innerText = "Rp " + (income - expense).toLocaleString();
     }
 
-    function clearData() {
-      if (confirm("Hapus semua data?")) {
-        transactions = [];
-        renderTable();
-      }
+    function addTransaction() {
+      const desc = document.getElementById("desc").value.trim();
+      const amount = parseInt(document.getElementById("amount").value);
+      const type = document.getElementById("type").value;
+      if (!desc || !amount) return alert("Lengkapi data!");
+
+      const newTransaction = {
+        date: new Date().toISOString().split("T")[0],
+        desc, amount, type
+      };
+      transactions.push(newTransaction);
+      localStorage.setItem("transactions", JSON.stringify(transactions));
+      document.getElementById("desc").value = "";
+      document.getElementById("amount").value = "";
+      renderTable();
+    }
+
+    function toggleEditMode() {
+      editMode = !editMode;
+      document.getElementById("actionMenu").classList.toggle("hidden", !editMode);
+      document.querySelector("th.hidden").classList.toggle("hidden", !editMode);
+      renderTable();
+    }
+
+    function deleteSelected() {
+      const checked = document.querySelectorAll(".row-check:checked");
+      if (checked.length === 0) return alert("Pilih data dulu!");
+      if (!confirm("Yakin ingin hapus transaksi terpilih?")) return;
+      let indexes = Array.from(checked).map(c => parseInt(c.dataset.index));
+      transactions = transactions.filter((_, i) => !indexes.includes(i));
+      localStorage.setItem("transactions", JSON.stringify(transactions));
+      renderTable();
+    }
+
+    function editSelected() {
+      const checked = document.querySelectorAll(".row-check:checked");
+      if (checked.length !== 1) return alert("Pilih 1 transaksi untuk edit!");
+      const index = parseInt(checked[0].dataset.index);
+      const t = transactions[index];
+      document.getElementById("desc").value = t.desc;
+      document.getElementById("amount").value = t.amount;
+      document.getElementById("type").value = t.type;
+      transactions.splice(index, 1);
+      localStorage.setItem("transactions", JSON.stringify(transactions));
+      renderTable();
     }
 
     function exportExcel() {
-      if (transactions.length === 0) {
-        alert("Tidak ada data untuk diexport!");
-        return;
-      }
-      let wb = XLSX.utils.book_new();
-      let ws_data = [["Tanggal", "Keterangan", "Pemasukan", "Pengeluaran", "Saldo"]];
-      let balance = 0;
-
-      transactions.forEach(trx => {
-        if (trx.type === "Pemasukan") {
-          balance += trx.amount;
-          ws_data.push([trx.date, trx.desc, trx.amount, "", balance]);
-        } else {
-          balance -= trx.amount;
-          ws_data.push([trx.date, trx.desc, "", trx.amount, balance]);
-        }
+      let csv = "Tanggal,Keterangan,Pemasukan,Pengeluaran\n";
+      transactions.forEach(t => {
+        csv += `${t.date},${t.desc},${t.type === 'income' ? t.amount : ''},${t.type === 'expense' ? t.amount : ''}\n`;
       });
-
-      let ws = XLSX.utils.aoa_to_sheet(ws_data);
-      XLSX.utils.book_append_sheet(wb, ws, "Laporan");
-      XLSX.writeFile(wb, "Laporan_Keuangan.xlsx");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "laporan_keuangan.csv";
+      a.click();
     }
+
+    document.getElementById("editToggle").addEventListener("click", toggleEditMode);
+    renderTable();
   </script>
 </body>
 </html>
