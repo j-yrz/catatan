@@ -204,7 +204,7 @@ function addTransaction(){
   const date=dateInput.value||today;
   const desc=document.getElementById("descInput").value;
   const amount=parseRupiah(document.getElementById("amountInput").value);
-  const member=memberSelect.value;
+  const member=memberSelect.value==="add"||memberSelect.value==="del"?"":memberSelect.value;
   const source=document.getElementById("sourceInput").value;
   const type=document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
@@ -257,8 +257,8 @@ amountInput.addEventListener("input",(e)=>{
 
 // Tambah/hapus anggota via menu dropdown
 function checkMemberOption(sel){
-  if(sel.value==="add") { addMember(); sel.value=members[0]||""; }
-  if(sel.value==="del") { deleteMember(); sel.value=members[0]||""; }
+  if(sel.value==="add") { addMember(); sel.value = members[0]||""; }
+  if(sel.value==="del") { deleteMember(); sel.value = members[0]||""; }
 }
 
 function addMember(){
@@ -267,8 +267,13 @@ function addMember(){
 }
 
 function deleteMember(){
-  const name=memberSelect.value;
-  if(name && confirm(`Hapus anggota ${name}?`)){ members=members.filter(m=>m!==name); saveData(); renderMembers(); }
+  const name = memberSelect.value;
+  if(!name || name==="add" || name==="del") return;
+  if(confirm(`Hapus anggota ${name}?`)){ 
+    members = members.filter(m => m !== name); 
+    saveData(); 
+    renderMembers(); 
+  }
 }
 
 // Filter transaksi
