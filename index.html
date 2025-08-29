@@ -153,4 +153,42 @@ function addTransaction(){
 }
 
 function deleteTransaction(i){ if(confirm("Yakin mau hapus transaksi ini?")){ transactions.splice(i,1); saveData(); renderTable(); } }
-function editTransaction(i){ let t=transactions[i]; let newDesc=prompt("Edit deskripsi:",t.desc); let newAmount=prompt("Edit jumlah:",t.amount); if(newDesc!==null&&newAmount!==null){ transactions[i].desc=newDesc; transactions[i].
+function editTransaction(i){ 
+  let t=transactions[i]; 
+  let newDesc=prompt("Edit deskripsi:",t.desc); 
+  let newAmount=prompt("Edit jumlah:",t.amount); 
+  if(newDesc!==null && newAmount!==null){ 
+    transactions[i].desc=newDesc; 
+    transactions[i].amount=parseRupiah(newAmount.toString()); 
+    saveData(); 
+    renderTable(); 
+  } 
+}
+
+function exportExcel(){ 
+  let csv="Tanggal,Deskripsi,Pemasukan,Pengeluaran\n"; 
+  transactions.forEach(t=>{
+    csv+=`${t.date},${t.desc},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`; 
+  }); 
+  let blob=new Blob([csv],{type:"text/csv"}); 
+  let url=window.URL.createObjectURL(blob); 
+  let a=document.createElement("a"); 
+  a.href=url; 
+  a.download="laporan_keuangan.csv"; 
+  a.click(); 
+}
+
+// input jumlah nyaman
+const amountInput=document.getElementById("amountInput");
+amountInput.addEventListener("input",(e)=>{
+  let value=parseRupiah(e.target.value);
+  e.target.value = value?formatRupiah(value):"";
+  e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+});
+
+// render awal
+renderTable();
+</script>
+
+</body>
+</html>
