@@ -1,102 +1,177 @@
-<script>
-  let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
-
-  // pastikan amount jadi angka
-  transactions = transactions.map(t => ({
-    ...t,
-    amount: Number(t.amount) || 0
-  }));
-
-  function saveData() {
-    localStorage.setItem("transactions", JSON.stringify(transactions));
-  }
-
-  function formatRupiah(angka) {
-    return "Rp " + angka.toLocaleString("id-ID");
-  }
-
-  function renderTable() {
-    const table = document.getElementById("transactionTable");
-    table.innerHTML = "";
-    let totalIncome = 0, totalExpense = 0;
-
-    transactions.forEach((t, i) => {
-      if (t.type === "pemasukan") totalIncome += t.amount;
-      else totalExpense += t.amount;
-
-      let row = `<tr>
-        <td>${t.date}</td>
-        <td>${t.desc}</td>
-        <td>${t.type === "pemasukan" ? formatRupiah(t.amount) : ""}</td>
-        <td>${t.type === "pengeluaran" ? formatRupiah(t.amount) : ""}</td>
-        <td>
-          <button class="aksi-btn edit" onclick="editTransaction(${i})">✏️</button>
-          <button class="aksi-btn delete" onclick="deleteTransaction(${i})">🗑️</button>
-        </td>
-      </tr>`;
-      table.innerHTML += row;
-    });
-
-    // update kotak atas
-    document.getElementById("totalIncome").innerText = formatRupiah(totalIncome);
-    document.getElementById("totalExpense").innerText = formatRupiah(totalExpense);
-    document.getElementById("balance").innerText = formatRupiah(totalIncome - totalExpense);
-  }
-
-  function addTransaction() {
-    const date = document.getElementById("dateInput").value || new Date().toISOString().slice(0,10);
-    const desc = document.getElementById("descInput").value;
-    const amount = Number(document.getElementById("amountInput").value);
-    const type = document.getElementById("typeInput").value;
-
-    if (!desc || isNaN(amount)) {
-      alert("Isi semua field!");
-      return;
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laporan Keuangan</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 0; }
+    header { background: #28a745; color: white; text-align: center; padding: 20px 10px; }
+    header h1 { margin: 5px 0; font-size: 1.5em; }
+    .summary { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
+    .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; min-width: 100px; flex: 1; }
+    .container { max-width: 900px; margin: 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .form-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+    input, select, button { padding: 8px; border-radius: 5px; border: 1px solid #ccc; flex: 1 1 100px; }
+    button { cursor: pointer; }
+    .btn-add { background: #007bff; color: white; border: none; }
+    .btn-exp { background: #28a745; color: white; border: none; width: 100%; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; display: block; overflow-x: auto; }
+    table, th, td { border: 1px solid #ddd; }
+    th { background: #28a745; color: white; padding: 10px; min-width: 100px; }
+    td { text-align: center; padding: 8px; min-width: 100px; }
+    .aksi-btn { cursor: pointer; border: none; background: none; font-size: 16px; margin: 0 3px; }
+    .aksi-btn.edit { color: #007bff; }
+    .aksi-btn.delete { color: #dc3545; }
+    @media(max-width:600px){
+      header h1 { font-size: 1.2em; }
+      .form-group { flex-direction: column; }
+      input, select, button { flex: 1 1 100%; }
+      table, th, td { font-size: 0.9em; }
     }
+  </style>
+</head>
+<body>
 
-    transactions.push({date, desc, amount, type});
+<header>
+  <h1>Laporan Keuangan</h1>
+  <div class="summary">
+    <div class="card"><strong>Pemasukan</strong><br><span id="totalIncome">Rp 0</span></div>
+    <div class="card"><strong>Pengeluaran</strong><br><span id="totalExpense">Rp 0</span></div>
+    <div class="card"><strong>Saldo</strong><br><span id="balance">Rp 0</span></div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="form-group">
+    <input type="date" id="dateInput">
+    <input type="text" id="descInput" placeholder="Deskripsi">
+    <input type="text" id="amountInput" placeholder="Jumlah">
+    <select id="typeInput">
+      <option value="pemasukan">Pemasukan</option>
+      <option value="pengeluaran">Pengeluaran</option>
+    </select>
+    <button class="btn-add" onclick="addTransaction()">Tambah Transaksi</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Deskripsi</th>
+        <th>Pemasukan</th>
+        <th>Pengeluaran</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="transactionTable"></tbody>
+  </table>
+
+  <button class="btn-exp" onclick="exportExcel()">Export Excel</button>
+</div>
+
+<script>
+const dateInput = document.getElementById("dateInput");
+const today = new Date().toISOString().slice(0,10);
+dateInput.value = today;
+
+let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
+
+function saveData() { localStorage.setItem("transactions", JSON.stringify(transactions)); }
+function formatRupiah(angka) { return "Rp " + angka.toLocaleString("id-ID"); }
+function parseRupiah(str) { return Number(str.replace(/[^0-9]/g, "")) || 0; }
+
+function renderTable() {
+  const table = document.getElementById("transactionTable");
+  table.innerHTML = "";
+  let totalIncome = 0, totalExpense = 0;
+
+  transactions.forEach((t, i) => {
+    if (t.type === "pemasukan") totalIncome += t.amount;
+    else totalExpense += t.amount;
+
+    let row = `<tr>
+      <td>${t.date}</td>
+      <td>${t.desc}</td>
+      <td>${t.type === "pemasukan" ? formatRupiah(t.amount) : ""}</td>
+      <td>${t.type === "pengeluaran" ? formatRupiah(t.amount) : ""}</td>
+      <td>
+        <button class="aksi-btn edit" onclick="editTransaction(${i})">✏️</button>
+        <button class="aksi-btn delete" onclick="deleteTransaction(${i})">🗑️</button>
+      </td>
+    </tr>`;
+    table.innerHTML += row;
+  });
+
+  document.getElementById("totalIncome").innerText = formatRupiah(totalIncome);
+  document.getElementById("totalExpense").innerText = formatRupiah(totalExpense);
+  document.getElementById("balance").innerText = formatRupiah(totalIncome - totalExpense);
+}
+
+function addTransaction() {
+  const date = dateInput.value || today;
+  const desc = document.getElementById("descInput").value;
+  const amount = parseRupiah(document.getElementById("amountInput").value);
+  const type = document.getElementById("typeInput").value;
+
+  if (!desc || amount <= 0) { alert("Isi semua field dengan benar!"); return; }
+
+  transactions.push({date, desc, amount, type});
+  saveData();
+  renderTable();
+
+  // reset form
+  document.getElementById("descInput").value = "";
+  document.getElementById("amountInput").value = "";
+  document.getElementById("typeInput").value = "pemasukan";
+  dateInput.value = today;
+}
+
+function deleteTransaction(i) {
+  if (confirm("Yakin mau hapus transaksi ini?")) {
+    transactions.splice(i, 1);
     saveData();
     renderTable();
-
-    // reset form
-    document.getElementById("descInput").value = "";
-    document.getElementById("amountInput").value = "";
   }
+}
 
-  function deleteTransaction(i) {
-    if (confirm("Yakin mau hapus transaksi ini?")) {
-      transactions.splice(i, 1);
-      saveData();
-      renderTable();
-    }
+function editTransaction(i) {
+  let t = transactions[i];
+  let newDesc = prompt("Edit deskripsi:", t.desc);
+  let newAmount = prompt("Edit jumlah:", t.amount);
+  if (newDesc !== null && newAmount !== null) {
+    transactions[i].desc = newDesc;
+    transactions[i].amount = parseRupiah(newAmount.toString());
+    saveData();
+    renderTable();
   }
+}
 
-  function editTransaction(i) {
-    let t = transactions[i];
-    let newDesc = prompt("Edit deskripsi:", t.desc);
-    let newAmount = prompt("Edit jumlah:", t.amount);
-    if (newDesc !== null && newAmount !== null) {
-      transactions[i].desc = newDesc;
-      transactions[i].amount = Number(newAmount);
-      saveData();
-      renderTable();
-    }
-  }
+function exportExcel() {
+  let csv = "Tanggal,Deskripsi,Pemasukan,Pengeluaran\n";
+  transactions.forEach(t => {
+    csv += `${t.date},${t.desc},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`;
+  });
+  let blob = new Blob([csv], { type: "text/csv" });
+  let url = window.URL.createObjectURL(blob);
+  let a = document.createElement("a");
+  a.href = url;
+  a.download = "laporan_keuangan.csv";
+  a.click();
+}
 
-  function exportExcel() {
-    let csv = "Tanggal,Deskripsi,Pemasukan,Pengeluaran\n";
-    transactions.forEach(t => {
-      csv += `${t.date},${t.desc},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`;
-    });
+// format jumlah saat diketik
+const amountInput = document.getElementById("amountInput");
+amountInput.addEventListener("input", (e) => {
+  let cursor = e.target.selectionStart;
+  let value = parseRupiah(e.target.value);
+  e.target.value = value ? formatRupiah(value) : "";
+  e.target.selectionStart = e.target.selectionEnd = cursor;
+});
 
-    let blob = new Blob([csv], { type: "text/csv" });
-    let url = window.URL.createObjectURL(blob);
-    let a = document.createElement("a");
-    a.href = url;
-    a.download = "laporan_keuangan.csv";
-    a.click();
-  }
-
-  // panggil render pas awal load
-  renderTable();
+renderTable();
 </script>
+
+</body>
+</html>
