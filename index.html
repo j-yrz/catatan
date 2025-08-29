@@ -113,8 +113,7 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 
 <script>
 const dateInput = document.getElementById("dateInput");
-const today = new Date().toISOString().slice(0,10);
-dateInput.value = today;
+dateInput.value = new Date().toISOString().slice(0,10);
 
 let members = JSON.parse(localStorage.getItem("members")) || [];
 let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
@@ -132,13 +131,11 @@ function renderMembers(){
     memberSelect.innerHTML+=`<option value="${m}">${m}</option>`;
     filterMember.innerHTML+=`<option value="${m}">${m}</option>`;
   });
-  // Dropdown delete anggota terbatas 3 nama terakhir
   deleteDropdown.innerHTML="<option value=''>Pilih (max 3)</option>";
   members.slice(-3).forEach(m=>{
     deleteDropdown.innerHTML+=`<option value="${m}">${m}</option>`;
   });
 }
-renderMembers();
 
 function saveData(){ 
   localStorage.setItem("transactions", JSON.stringify(transactions));
@@ -203,9 +200,8 @@ function renderTable(filtered=[]){
   renderChart();
 }
 
-// Fungsi transaksi
 function addTransaction(){
-  const date = dateInput.value||today;
+  const date = dateInput.value;
   const desc = document.getElementById("descInput").value;
   const amount = parseRupiah(document.getElementById("amountInput").value);
   const member = memberSelect.value;
@@ -219,7 +215,6 @@ function addTransaction(){
   document.getElementById("sourceInput").value="";
   document.getElementById("typeInput").value="pemasukan";
   memberSelect.value="";
-  dateInput.value=today;
 }
 
 function deleteTransaction(i){ if(confirm("Yakin mau hapus transaksi ini?")){ transactions.splice(i,1); saveData(); renderTable(); } }
@@ -252,7 +247,7 @@ function exportExcel(){
   a.click();
 }
 
-// Fungsi anggota
+// Anggota
 function addMember(){
   const name = document.getElementById("newMember").value.trim();
   if(!name){ alert("Masukkan nama anggota!"); return; }
@@ -271,7 +266,7 @@ function deleteMember(){
   }
 }
 
-// Fungsi filter
+// Filter
 function applyFilter(){
   let fMember = filterMember.value;
   let fType = document.getElementById("filterType").value;
@@ -282,8 +277,8 @@ function applyFilter(){
 }
 
 // Init
+renderMembers();
 renderTable();
 </script>
-
 </body>
 </html>
