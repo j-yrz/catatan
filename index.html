@@ -1,138 +1,10 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Laporan Keuangan</title>
-<style>
-body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 0; }
-header { text-align: center; padding: 20px 10px; }
-header h1 { margin: 5px 0; font-size: 1.5em; }
-.summary { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
-.card { padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; min-width: 100px; flex: 1; color: white; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s, background-color 0.5s; }
-.card span { margin-top: 5px; font-size: 1.1em; transition: transform 0.3s; }
-.income { background: #28a745; }
-.expense { background: #dc3545; }
-.balance { background: #007bff; }
-.container { max-width: 1000px; margin: 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-.form-group, .filter-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-input, select, button { padding: 8px; border-radius: 5px; border: 1px solid #ccc; flex: 1 1 120px; }
-button { cursor: pointer; }
-.btn-add { background: #007bff; color: white; border: none; }
-.btn-exp { background: #28a745; color: white; border: none; width: 100%; margin-top: 10px; }
-.btn-delete-selected { background: #dc3545; color: white; border: none; margin-bottom:10px; padding:8px 10px; border-radius:5px; display:none; }
-.table-container { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-table, th, td { border: 1px solid #ddd; }
-th { background: #28a745; color: white; padding: 10px; min-width: 50px; }
-td { text-align: center; padding: 8px; min-width: 50px; }
-.aksi-btn { cursor: pointer; border: none; background: none; font-size: 16px; margin: 0 3px; color:#007bff; }
-#chartContainer { margin-top: 20px; height: 30px; display: flex; border-radius: 5px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-.bar { height: 100%; transition: width 0.8s; }
-.incomeBar { background: linear-gradient(90deg,#28a745,#7ef293); }
-.expenseBar { background: linear-gradient(90deg,#dc3545,#f78c8c); }
-.modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background: rgba(0,0,0,0.4); }
-.modal-content { background:white; margin:10% auto; padding:20px; border-radius:8px; width:90%; max-width:400px; box-shadow:0 2px 5px rgba(0,0,0,0.3); }
-.modal-content input, .modal-content select { width:100%; margin-bottom:10px; }
-.modal-content button { width:100%; margin-top:5px; }
-@media(max-width:600px){
-  header h1 { font-size: 1.2em; }
-  .form-group, .filter-group { flex-direction: column; }
-  input, select, button { flex: 1 1 100%; }
-  table, th, td { font-size: 0.9em; }
-}
-</style>
-</head>
-<body>
-
-<header>
-<h1>Laporan Keuangan</h1>
-<div class="summary">
-  <div class="card income">💰<strong>Pemasukan</strong><span id="totalIncome">Rp 0</span></div>
-  <div class="card expense">🛑<strong>Pengeluaran</strong><span id="totalExpense">Rp 0</span></div>
-  <div class="card balance">🏦<strong>Saldo</strong><span id="balance">Rp 0</span></div>
-</div>
-<div id="chartContainer">
-  <div class="bar incomeBar" style="width:50%"></div>
-  <div class="bar expenseBar" style="width:50%"></div>
-</div>
-</header>
-
-<div class="container">
-<div class="form-group">
-  <input type="date" id="dateInput">
-  <input type="text" id="descInput" placeholder="Deskripsi">
-  <input type="text" id="amountInput" placeholder="Jumlah">
-  <select id="memberSelect" onchange="memberOptionChange()"></select>
-  <input type="text" id="sourceInput" placeholder="Sumber Dana">
-  <select id="typeInput">
-    <option value="pemasukan">Pemasukan</option>
-    <option value="pengeluaran">Pengeluaran</option>
-  </select>
-  <button class="btn-add" onclick="addTransaction()">Tambah Transaksi</button>
-</div>
-
-<div class="filter-group">
-  <select id="filterMember">
-    <option value="all">Semua Anggota</option>
-  </select>
-  <select id="filterType">
-    <option value="all">Semua Tipe</option>
-    <option value="pemasukan">Pemasukan</option>
-    <option value="pengeluaran">Pengeluaran</option>
-  </select>
-  <button onclick="applyFilter()">Terapkan Filter</button>
-</div>
-
-<button class="btn-delete-selected" id="btnDeleteSelected" onclick="deleteSelected()">Hapus Terpilih</button>
-
-<div class="table-container">
-<table>
-<thead>
-  <tr>
-    <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
-    <th>No</th>
-    <th>Tanggal</th>
-    <th>Deskripsi</th>
-    <th>Anggota</th>
-    <th>Sumber Dana</th>
-    <th>Pemasukan</th>
-    <th>Pengeluaran</th>
-    <th>Status</th>
-    <th>Aksi</th>
-  </tr>
-</thead>
-<tbody id="transactionTable"></tbody>
-</table>
-</div>
-
-<button class="btn-exp" onclick="exportExcel()">Export Excel</button>
-</div>
-
-<div id="editModal" class="modal">
-  <div class="modal-content">
-    <h3>Edit Transaksi</h3>
-    <input type="date" id="editDate">
-    <input type="text" id="editDesc" placeholder="Deskripsi">
-    <input type="text" id="editAmount" placeholder="Jumlah">
-    <select id="editMember"></select>
-    <input type="text" id="editSource" placeholder="Sumber Dana">
-    <select id="editType">
-      <option value="pemasukan">Pemasukan</option>
-      <option value="pengeluaran">Pengeluaran</option>
-    </select>
-    <button onclick="saveEdit()">Simpan</button>
-    <button onclick="closeModal()">Batal</button>
-  </div>
-</div>
-
 <!-- SCRIPT BAGIAN 1 -->
 <script>
 // Inisialisasi tanggal default
 const dateInput = document.getElementById("dateInput");
 dateInput.value = new Date().toISOString().slice(0,10);
 
-// Ambil data dari localStorage atau inisialisasi baru
+// Data members dan transaksi
 let members = JSON.parse(localStorage.getItem("members")) || [];
 let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
 transactions = transactions.map(t => ({
@@ -147,7 +19,7 @@ const filterMember = document.getElementById("filterMember");
 const amountInput = document.getElementById("amountInput");
 const btnDeleteSelected = document.getElementById("btnDeleteSelected");
 
-// Format input angka Rupiah
+// Format input angka
 amountInput.addEventListener("input", function(e){
   let cursorPos = this.selectionStart;
   let value = this.value.replace(/\D/g,'');
@@ -155,7 +27,7 @@ amountInput.addEventListener("input", function(e){
   this.setSelectionRange(cursorPos,cursorPos);
 });
 
-// Render anggota di dropdown
+// Render daftar members
 function renderMembers(){
   memberSelect.innerHTML="";
   memberSelect.innerHTML+=`<option value="" disabled selected>Pilih anggota</option>`;
@@ -177,7 +49,7 @@ function renderMembers(){
   });
 }
 
-// Tambah/Hapus anggota
+// Tambah / hapus anggota
 function memberOptionChange(){
   const val = memberSelect.value;
   if(val === "+"){
@@ -194,17 +66,17 @@ function memberOptionChange(){
   }
 }
 
-// Simpan ke localStorage
+// Simpan data ke localStorage
 function saveData(){ 
   localStorage.setItem("transactions", JSON.stringify(transactions));
   localStorage.setItem("members", JSON.stringify(members));
 }
 
-// Format Rupiah
+// Format rupiah
 function formatRupiah(angka){ return "Rp "+angka.toLocaleString("id-ID"); }
 function parseRupiah(str){ return Number(str.replace(/[^0-9]/g,""))||0; }
 
-// Render chart
+// Render chart pemasukan & pengeluaran
 function renderChart(){
   const incomeTotal = transactions.filter(t=>t.type==="pemasukan").reduce((a,b)=>a+b.amount,0);
   const expenseTotal = transactions.filter(t=>t.type==="pengeluaran").reduce((a,b)=>a+b.amount,0);
@@ -213,38 +85,48 @@ function renderChart(){
   document.querySelector(".expenseBar").style.width = (expenseTotal/total*100)+"%";
 }
 
-// Tampilkan/Hapus tombol Hapus Terpilih
+// Update tombol delete terpilih
 function updateDeleteSelectedButton(){
   const anyChecked = document.querySelectorAll(".rowCheckbox:checked").length>0;
   btnDeleteSelected.style.display = anyChecked?"inline-block":"none";
 }
 
-// Render tabel transaksi (sederhana, tooltip akan diisi di script 2)
-function renderTable(filtered=[]){
-  const table = document.getElementById("transactionTable");
-  table.innerHTML="";
-  const data = filtered.length?filtered:transactions;
-  data.forEach((t,i)=>{
-    table.innerHTML+=`<tr>
-      <td><input type="checkbox" class="rowCheckbox" data-index="${i}" onchange="updateDeleteSelectedButton()"></td>
-      <td>${i+1}</td>
-      <td>${t.date}</td>
-      <td>${t.desc}</td>
-      <td>${t.member||""}</td>
-      <td>${t.source||""}</td>
-      <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
-      <td>${t.type==="pengeluaran"?formatRupiah(t.amount):""}</td>
-      <td></td>
-      <td><button class="aksi-btn" onclick="openEditModal(${i})">✏️</button></td>
-    </tr>`;
-  });
-}
-
+// Inisialisasi awal
+renderMembers();
+renderChart();
 </script>
 <!-- SCRIPT BAGIAN 2 -->
 <script>
 
-// Render tabel lengkap dengan tooltip riwayat edit
+// Tambahkan div global untuk tooltip
+let tooltipDiv = document.createElement("div");
+tooltipDiv.id = "editTooltip";
+tooltipDiv.style.position = "absolute";
+tooltipDiv.style.background = "#fff";
+tooltipDiv.style.border = "1px solid #ccc";
+tooltipDiv.style.padding = "10px";
+tooltipDiv.style.borderRadius = "6px";
+tooltipDiv.style.boxShadow = "0 3px 8px rgba(0,0,0,0.2)";
+tooltipDiv.style.display = "none";
+tooltipDiv.style.zIndex = 1001;
+tooltipDiv.style.maxWidth = "300px";
+tooltipDiv.style.fontSize = "0.9em";
+tooltipDiv.style.pointerEvents = "auto";
+tooltipDiv.style.opacity = 0;
+tooltipDiv.style.transition = "opacity 0.3s";
+tooltipDiv.style.cursor = "default";
+document.body.appendChild(tooltipDiv);
+tooltipDiv.innerHTML = ""; 
+
+// Tutup tooltip saat klik di luar
+document.addEventListener("click", function(e){
+  if(!tooltipDiv.contains(e.target) && !e.target.classList.contains("statusCell")){
+    tooltipDiv.style.opacity = 0;
+    setTimeout(()=>{ tooltipDiv.style.display = "none"; },300);
+  }
+});
+
+// Render tabel lengkap dengan tooltip
 function renderTable(filtered=[]){
   const table = document.getElementById("transactionTable");
   table.innerHTML="";
@@ -254,7 +136,7 @@ function renderTable(filtered=[]){
     if(t.type==="pemasukan") totalIncome+=t.amount;
     else totalExpense+=t.amount;
 
-    let tooltip = t.editHistory.map(h=>h.date + ": " + h.changes.join("; ")).join("\n");
+    let tooltipContent = t.editHistory.map(h=>`${h.date}: ${h.changes.join("; ")}`).join("<br>");
 
     table.innerHTML+=`<tr>
       <td><input type="checkbox" class="rowCheckbox" data-index="${i}" onchange="updateDeleteSelectedButton()"></td>
@@ -265,7 +147,7 @@ function renderTable(filtered=[]){
       <td>${t.source||""}</td>
       <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
       <td>${t.type==="pengeluaran"?formatRupiah(t.amount):""}</td>
-      <td title="${tooltip}">${t.edited?"(diedit)":""}</td>
+      <td class="statusCell" data-tooltip='${tooltipContent}'>${t.edited?"(diedit)":""}</td>
       <td><button class="aksi-btn" onclick="openEditModal(${i})">✏️</button></td>
     </tr>`;
   });
@@ -285,7 +167,11 @@ function addTransaction(){
   const source = document.getElementById("sourceInput").value;
   const type = document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
-  transactions.push({date,desc,amount,type,member:(member==="+"||member==="-")?"":member,source,edited:false,editHistory:[]});
+  transactions.push({
+    date,desc,amount,type,
+    member:(member==="+"||member==="-")?"":member,
+    source,edited:false,editHistory:[]
+  });
   saveData(); renderTable();
   document.getElementById("descInput").value="";
   document.getElementById("amountInput").value="";
@@ -397,7 +283,94 @@ function exportExcel(){
   document.body.removeChild(a);
 }
 
-// Inisialisasi awal
+// Inisialisasi render awal
 renderMembers();
 renderTable();
+
+</script>
+<!-- SCRIPT BAGIAN 3: Tooltip Panah Otomatis Responsive -->
+<script>
+
+// Ganti event tooltip lama dengan versi panah otomatis
+document.querySelectorAll(".statusCell").forEach(cell=>{
+  cell.addEventListener("click", e=>{
+    const content = cell.dataset.tooltip;
+    if(!content) return;
+    tooltipDiv.innerHTML = content;
+
+    tooltipDiv.style.display = "block";
+    tooltipDiv.style.opacity = 0;
+
+    const rect = cell.getBoundingClientRect();
+    const scrollX = window.scrollX || window.pageXOffset;
+    const scrollY = window.scrollY || window.pageYOffset;
+    const tooltipWidth = tooltipDiv.offsetWidth;
+    const tooltipHeight = tooltipDiv.offsetHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let left, top;
+    let arrowDirection = "top"; // default panah di atas
+
+    // Tentukan posisi horizontal
+    if(rect.right + tooltipWidth + 10 < viewportWidth){
+      left = rect.right + 10 + scrollX;
+      arrowDirection = "left";
+    } else if(rect.left - tooltipWidth - 10 > 0){
+      left = rect.left - tooltipWidth - 10 + scrollX;
+      arrowDirection = "right";
+    } else { 
+      // fallback posisi bawah
+      left = rect.left + scrollX;
+      arrowDirection = "top";
+    }
+
+    // Tentukan posisi vertikal
+    if(rect.top + tooltipHeight > viewportHeight){
+      top = rect.bottom - tooltipHeight + scrollY; // geser ke atas
+    } else {
+      top = rect.top + scrollY;
+    }
+
+    tooltipDiv.style.left = left + "px";
+    tooltipDiv.style.top = top + "px";
+
+    // Set panah otomatis
+    let arrowStyle = "";
+    switch(arrowDirection){
+      case "left":
+        arrowStyle = "position:absolute; left:-6px; top:10px; border-top:6px solid transparent; border-bottom:6px solid transparent; border-right:6px solid #fff;";
+        break;
+      case "right":
+        arrowStyle = "position:absolute; right:-6px; top:10px; border-top:6px solid transparent; border-bottom:6px solid transparent; border-left:6px solid #fff;";
+        break;
+      case "top":
+        arrowStyle = "position:absolute; top:-6px; left:10px; border-left:6px solid transparent; border-right:6px solid transparent; border-bottom:6px solid #fff;";
+        break;
+    }
+
+    tooltipDiv.style.setProperty('--arrow-style', arrowStyle);
+
+    // Buat panah div
+    let arrowDiv = tooltipDiv.querySelector(".tooltipArrow");
+    if(!arrowDiv){
+      arrowDiv = document.createElement("div");
+      arrowDiv.className = "tooltipArrow";
+      tooltipDiv.appendChild(arrowDiv);
+    }
+    arrowDiv.style.cssText = arrowStyle;
+
+    setTimeout(()=>{ tooltipDiv.style.opacity = 1; },10);
+    e.stopPropagation();
+  });
+});
+
+// Tutup tooltip saat klik di luar (tetap sama)
+document.addEventListener("click", function(e){
+  if(!tooltipDiv.contains(e.target) && !e.target.classList.contains("statusCell")){
+    tooltipDiv.style.opacity = 0;
+    setTimeout(()=>{ tooltipDiv.style.display = "none"; },300);
+  }
+});
+
 </script>
