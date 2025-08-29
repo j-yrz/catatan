@@ -6,7 +6,7 @@
 <title>Laporan Keuangan</title>
 <style>
 /* ===================== */
-/* CSS LENGKAP BAGIAN 1 */
+/* CSS BAGIAN 1          */
 /* ===================== */
 body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 0; }
 header { text-align: center; padding: 20px 10px; }
@@ -157,7 +157,7 @@ amountInput.addEventListener("input", function(e){
 <script>
 /* ===================== */
 /* SCRIPT BAGIAN 2       */
-/* Helper & Render Table */
+/* Helper & Operasi      */
 /* ===================== */
 
 function saveData(){ 
@@ -226,7 +226,11 @@ function addTransaction(){
   const source = document.getElementById("sourceInput").value;
   const type = document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
-  transactions.push({date,desc,amount,type,member:(member==="+"||member==="-")?"":member,source,edited:false, editHistory:[]});
+  transactions.push({
+    date, desc, amount, type,
+    member:(member==="+"||member==="-")?"":member,
+    source, edited:false, editHistory:[]
+  });
   saveData(); renderTable();
   document.getElementById("descInput").value="";
   document.getElementById("amountInput").value="";
@@ -314,14 +318,13 @@ function exportExcel(){
   a.click();
 }
 
-// Render Table dengan tooltip akan diattach di BAGIAN 3
+// Inisialisasi awal
 renderMembers();
-renderTable();
 </script>
 <script>
 /* ===================== */
 /* SCRIPT BAGIAN 3       */
-/* Tooltip Panah Otomatis*/
+/* Tooltip & RenderTable */
 /* ===================== */
 
 const tooltipDiv = document.getElementById("editTooltip");
@@ -403,17 +406,19 @@ function attachTooltipEvents(){
 // Hilangkan tooltip saat klik di luar
 document.addEventListener("click", ()=>{ tooltipDiv.style.display="none"; });
 
-// Modifikasi renderTable untuk menambahkan kelas statusCell & data-index
-const origRenderTable = renderTable;
-renderTable = function(filtered=[]){
+// RenderTable final gabungan semua fitur
+function renderTable(filtered=[]){
   const table = document.getElementById("transactionTable");
-  table.innerHTML="";
-  let totalIncome=0, totalExpense=0;
-  const data = filtered.length?filtered:transactions;
-  data.forEach((t,i)=>{
-    if(t.type==="pemasukan") totalIncome+=t.amount;
-    else totalExpense+=t.amount;
-    table.innerHTML+=`<tr>
+  table.innerHTML = "";
+  let totalIncome = 0, totalExpense = 0;
+  const data = filtered.length ? filtered : transactions;
+
+  data.forEach((t, i) => {
+    if(t.type==="pemasukan") totalIncome += t.amount;
+    else totalExpense += t.amount;
+
+    const statusText = t.edited ? "(diedit)" : "-";
+    table.innerHTML += `<tr>
       <td><input type="checkbox" class="rowCheckbox" data-index="${i}" onchange="updateDeleteSelectedButton()"></td>
       <td>${i+1}</td>
       <td>${t.date}</td>
@@ -422,15 +427,44 @@ renderTable = function(filtered=[]){
       <td>${t.source||""}</td>
       <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
       <td>${t.type==="pengeluaran"?formatRupiah(t.amount):""}</td>
-      <td class="statusCell" data-index="${i}">${t.edited?"(diedit)":"-"}</td>
+      <td class="statusCell" data-index="${i}">${statusText}</td>
       <td><button class="aksi-btn" onclick="openEditModal(${i})">✏️</button></td>
     </tr>`;
   });
-  document.getElementById("totalIncome").innerText=formatRupiah(totalIncome);
-  document.getElementById("totalExpense").innerText=formatRupiah(totalExpense);
-  document.getElementById("balance").innerText=formatRupiah(totalIncome-totalExpense);
+
+  document.getElementById("totalIncome").innerText = formatRupiah(totalIncome);
+  document.getElementById("totalExpense").innerText = formatRupiah(totalExpense);
+  document.getElementById("balance").innerText = formatRupiah(totalIncome - totalExpense);
+
   renderChart();
   updateDeleteSelectedButton();
   attachTooltipEvents();
-};
+}
+
+// Modal Edit (tambahan jika belum ada)
+if(!document.getElementById("editModal")){
+  const modalDiv = document.createElement("div");
+  modalDiv.id = "editModal";
+  modalDiv.className = "modal";
+  modalDiv.innerHTML = `
+    <div class="modal-content">
+      <h3>Edit Transaksi</h3>
+      <input type="date" id="editDate">
+      <input type="text" id="editDesc" placeholder="Deskripsi">
+      <input type="text" id="editAmount" placeholder="Jumlah">
+      <select id="editMember"></select>
+      <input type="text" id="editSource" placeholder="Sumber Dana">
+      <select id="editType">
+        <option value="pemasukan">Pemasukan</option>
+        <option value="pengeluaran">Pengeluaran</option>
+      </select>
+      <button onclick="saveEdit()">Simpan</button>
+      <button onclick="closeModal()">Batal</button>
+    </div>
+  `;
+  document.body.appendChild(modalDiv);
+}
+
+// Panggil renderTable pertama kali
+renderTable();
 </script>
