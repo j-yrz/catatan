@@ -1,220 +1,134 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Laporan Keuangan</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0; padding: 0;
-      background-color: #f4f4f4;
-      color: #333;
-      transition: all 0.3s;
-    }
-    header {
-      background: #4CAF50;
-      color: white;
-      padding: 15px;
-      text-align: center;
-    }
-    .container {
-      width: 90%;
-      max-width: 900px;
-      margin: 20px auto;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    input, select, button {
-      padding: 8px;
-      margin: 5px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    button {
-      cursor: pointer;
-      background: #4CAF50;
-      color: white;
-      border: none;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background: #4CAF50;
-      color: white;
-    }
-    tr:nth-child(even) { background: #f9f9f9; }
-    .actions button {
-      margin: 0 2px;
-      cursor: pointer;
-    }
-    /* Dark mode */
-    body.dark {
-      background-color: #121212;
-      color: #eee;
-    }
-    body.dark .container { background: #1e1e1e; }
-    body.dark th { background: #388E3C; }
-    body.dark tr:nth-child(even) { background: #2a2a2a; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Keuangan</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f9; }
+        header { background: #4CAF50; color: white; padding: 20px; text-align: center; }
+        header h1 { margin: 0; }
+        .summary { display: flex; justify-content: center; gap: 20px; margin: 15px 0; }
+        .card { background: white; padding: 10px 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .container { width: 90%; margin: auto; margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background: #4CAF50; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .actions button { margin: 2px; padding: 5px 10px; border: none; cursor: pointer; border-radius: 4px; }
+        .edit-btn { background: #ff9800; color: white; }
+        .delete-btn { background: #f44336; color: white; }
+        .add-btn { background: #2196F3; color: white; margin-top: 10px; }
+        .export-btn { background: #4CAF50; color: white; margin-top: 10px; }
+        input, select { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Laporan Keuangan</h1>
-    <h2>Saldo: <span id="saldo">0</span> <button onclick="toggleEditMode()">✏️ Edit</button></h2>
-  </header>
+    <header>
+        <h1>Laporan Keuangan</h1>
+        <div class="summary">
+            <div class="card">Pemasukan: <span id="totalIncome">0</span></div>
+            <div class="card">Pengeluaran: <span id="totalExpense">0</span></div>
+            <div class="card">Saldo: <span id="balance">0</span></div>
+        </div>
+    </header>
 
-  <div class="container">
-    <form id="formTransaksi">
-      <input type="date" id="tanggal" required>
-      <input type="text" id="deskripsi" placeholder="Deskripsi" required>
-      <input type="number" id="jumlah" placeholder="Jumlah" required>
-      <select id="tipe">
-        <option value="pemasukan">Pemasukan</option>
-        <option value="pengeluaran">Pengeluaran</option>
-      </select>
-      <button type="submit" id="btnSubmit">Tambah Transaksi</button>
-    </form>
+    <div class="container">
+        <input type="date" id="dateInput">
+        <input type="text" id="descInput" placeholder="Deskripsi">
+        <input type="number" id="amountInput" placeholder="Jumlah">
+        <select id="typeInput">
+            <option value="income">Pemasukan</option>
+            <option value="expense">Pengeluaran</option>
+        </select>
+        <button class="add-btn" onclick="addTransaction()">Tambah Transaksi</button>
+        <button class="export-btn" onclick="exportExcel()">Export Excel</button>
 
-    <table id="tabel">
-      <thead>
-        <tr>
-          <th><input type="checkbox" id="selectAll" style="display:none" onchange="toggleSelectAll(this)"></th>
-          <th>Tanggal</th>
-          <th>Deskripsi</th>
-          <th>Pemasukan</th>
-          <th>Pengeluaran</th>
-          <th>Aksi</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-
-    <div id="bulkActions" style="display:none; margin-top:10px;">
-      <button onclick="hapusTerpilih()">❌ Hapus Terpilih</button>
+        <table id="transactionTable">
+            <thead>
+                <tr>
+                    <th>Pilih</th>
+                    <th>Tanggal</th>
+                    <th>Deskripsi</th>
+                    <th>Pemasukan</th>
+                    <th>Pengeluaran</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="delete-btn" onclick="deleteSelected()">Hapus Terpilih</button>
     </div>
 
-    <button onclick="exportExcel()">📂 Export Excel</button>
-  </div>
+    <script>
+        let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
 
-  <script>
-    let saldo = 0;
-    let data = [];
-    let editIndex = null;
-    let editMode = false;
+        function renderTable() {
+            const tbody = document.querySelector("#transactionTable tbody");
+            tbody.innerHTML = "";
+            let totalIncome = 0, totalExpense = 0;
+            transactions.forEach((t, index) => {
+                let row = `<tr>
+                    <td><input type='checkbox' data-index='${index}'></td>
+                    <td>${t.date}</td>
+                    <td contenteditable="true" onBlur="editTransaction(${index}, 'desc', this.innerText)">${t.desc}</td>
+                    <td contenteditable="true" onBlur="editTransaction(${index}, 'income', this.innerText)">${t.type === "income" ? t.amount : ""}</td>
+                    <td contenteditable="true" onBlur="editTransaction(${index}, 'expense', this.innerText)">${t.type === "expense" ? t.amount : ""}</td>
+                    <td class="actions"><button class="delete-btn" onclick="deleteTransaction(${index})">Hapus</button></td>
+                </tr>`;
+                tbody.innerHTML += row;
+                if (t.type === "income") totalIncome += Number(t.amount);
+                else totalExpense += Number(t.amount);
+            });
+            document.getElementById("totalIncome").innerText = totalIncome;
+            document.getElementById("totalExpense").innerText = totalExpense;
+            document.getElementById("balance").innerText = totalIncome - totalExpense;
+            localStorage.setItem("transactions", JSON.stringify(transactions));
+        }
 
-    const saldoEl = document.getElementById("saldo");
-    const tbody = document.querySelector("#tabel tbody");
-    const btnSubmit = document.getElementById("btnSubmit");
+        function addTransaction() {
+            const date = document.getElementById("dateInput").value || new Date().toISOString().split("T")[0];
+            const desc = document.getElementById("descInput").value;
+            const amount = Number(document.getElementById("amountInput").value);
+            const type = document.getElementById("typeInput").value;
+            if (!desc || !amount) return alert("Lengkapi data!");
+            transactions.push({ date, desc, amount, type });
+            renderTable();
+        }
 
-    document.getElementById("formTransaksi").addEventListener("submit", e => {
-      e.preventDefault();
-      const tgl = document.getElementById("tanggal").value;
-      const desk = document.getElementById("deskripsi").value;
-      const jml = parseFloat(document.getElementById("jumlah").value);
-      const tipe = document.getElementById("tipe").value;
+        function deleteTransaction(index) {
+            transactions.splice(index, 1);
+            renderTable();
+        }
 
-      if(editIndex !== null) {
-        // Update data lama
-        const old = data[editIndex];
-        if(old.tipe === "pemasukan") saldo -= old.jumlah;
-        else saldo += old.jumlah;
+        function deleteSelected() {
+            const checkboxes = document.querySelectorAll("tbody input[type='checkbox']:checked");
+            let indexes = Array.from(checkboxes).map(cb => Number(cb.getAttribute("data-index")));
+            transactions = transactions.filter((_, i) => !indexes.includes(i));
+            renderTable();
+        }
 
-        data[editIndex] = {tanggal: tgl, deskripsi: desk, jumlah: jml, tipe};
+        function editTransaction(index, field, value) {
+            if (field === "desc") transactions[index].desc = value;
+            if (field === "income") { transactions[index].type = "income"; transactions[index].amount = Number(value); }
+            if (field === "expense") { transactions[index].type = "expense"; transactions[index].amount = Number(value); }
+            renderTable();
+        }
 
-        if(tipe === "pemasukan") saldo += jml;
-        else saldo -= jml;
+        function exportExcel() {
+            let csv = "Tanggal,Deskripsi,Pemasukan,Pengeluaran\n";
+            transactions.forEach(t => {
+                csv += `${t.date},${t.desc},${t.type === "income" ? t.amount : ""},${t.type === "expense" ? t.amount : ""}\n`;
+            });
+            let blob = new Blob([csv], { type: "text/csv" });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "laporan_keuangan.csv";
+            link.click();
+        }
 
-        editIndex = null;
-        btnSubmit.textContent = "Tambah Transaksi";
-      } else {
-        // Tambah baru
-        data.push({tanggal: tgl, deskripsi: desk, jumlah: jml, tipe});
-        if(tipe === "pemasukan") saldo += jml;
-        else saldo -= jml;
-      }
-
-      render();
-      e.target.reset();
-    });
-
-    function render(){
-      tbody.innerHTML = "";
-      data.forEach((d, i) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${editMode ? `<input type='checkbox' data-index='${i}'>` : ""}</td>
-          <td>${d.tanggal}</td>
-          <td>${d.deskripsi}</td>
-          <td>${d.tipe === "pemasukan" ? d.jumlah : ""}</td>
-          <td>${d.tipe === "pengeluaran" ? d.jumlah : ""}</td>
-          <td class="actions">
-            <button onclick="editData(${i})">✏️</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-      saldoEl.textContent = saldo;
-      document.getElementById("selectAll").style.display = editMode ? "inline" : "none";
-      document.getElementById("bulkActions").style.display = editMode ? "block" : "none";
-    }
-
-    function editData(i){
-      const d = data[i];
-      document.getElementById("tanggal").value = d.tanggal;
-      document.getElementById("deskripsi").value = d.deskripsi;
-      document.getElementById("jumlah").value = d.jumlah;
-      document.getElementById("tipe").value = d.tipe;
-      editIndex = i;
-      btnSubmit.textContent = "Update Transaksi";
-    }
-
-    function toggleEditMode(){
-      editMode = !editMode;
-      render();
-    }
-
-    function toggleSelectAll(cb){
-      document.querySelectorAll("tbody input[type=checkbox]").forEach(ch => ch.checked = cb.checked);
-    }
-
-    function hapusTerpilih(){
-      const checked = [...document.querySelectorAll("tbody input[type=checkbox]:checked")];
-      checked.forEach(ch => {
-        const i = parseInt(ch.dataset.index);
-        const d = data[i];
-        if(d.tipe === "pemasukan") saldo -= d.jumlah;
-        else saldo += d.jumlah;
-        data[i] = null;
-      });
-      data = data.filter(d => d !== null);
-      render();
-    }
-
-    function exportExcel(){
-      let csv = "Tanggal,Deskripsi,Pemasukan,Pengeluaran\n";
-      data.forEach(d => {
-        csv += `${d.tanggal},${d.deskripsi},${d.tipe==="pemasukan"?d.jumlah:""},${d.tipe==="pengeluaran"?d.jumlah:""}\n`;
-      });
-      const blob = new Blob([csv], {type:"text/csv"});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "laporan_keuangan.csv";
-      a.click();
-    }
-
-    // Dark/Light mode otomatis (berdasarkan jam)
-    const jam = new Date().getHours();
-    if(jam >= 18 || jam < 6) document.body.classList.add("dark");
-  </script>
+        renderTable();
+    </script>
 </body>
 </html>
