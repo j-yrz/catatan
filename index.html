@@ -116,6 +116,15 @@ transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
 
 const memberSelect = document.getElementById("memberSelect");
 const filterMember = document.getElementById("filterMember");
+const amountInput = document.getElementById("amountInput");
+
+// Format Rupiah saat mengetik
+amountInput.addEventListener("input", function(e){
+  let cursorPos = this.selectionStart;
+  let value = this.value.replace(/\D/g,'');
+  this.value = value ? Number(value).toLocaleString("id-ID") : "";
+  this.setSelectionRange(cursorPos, cursorPos);
+});
 
 function renderMembers(){
   memberSelect.innerHTML="";
@@ -138,14 +147,17 @@ function memberOptionChange(){
     const name = prompt("Masukkan nama anggota baru:").trim();
     if(name && !members.includes(name)) members.push(name);
     saveData(); renderMembers();
-  }
-  if(val === "-"){
+  } else if(val === "-"){
     if(members.length===0){ alert("Tidak ada anggota tersisa!"); return; }
     const name = prompt("Pilih anggota untuk dihapus:\n"+members.join("\n"));
     if(name && members.includes(name)){
       members = members.filter(m=>m!==name);
       saveData(); renderMembers();
     }
+  } 
+  // reset ke default untuk input transaksi biasa
+  if(val !== "+" && val !== "-"){
+    // nothing, pilih anggota biasa tetap tersimpan saat addTransaction
   }
   memberSelect.value="";
 }
@@ -200,11 +212,12 @@ function addTransaction(){
   const date = dateInput.value;
   const desc = document.getElementById("descInput").value;
   const amount = parseRupiah(document.getElementById("amountInput").value);
-  const member = memberSelect.value;
+  let member = memberSelect.value;
   const source = document.getElementById("sourceInput").value;
   const type = document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
-  transactions.push({date,desc,amount,type,member:member==="+"||member==="-"?"":member,source});
+  if(member==="+" || member==="-") member="";
+  transactions.push({date,desc,amount,type,member,source});
   saveData(); renderTable();
   document.getElementById("descInput").value="";
   document.getElementById("amountInput").value="";
