@@ -9,7 +9,7 @@ body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 
 header { text-align: center; padding: 20px 10px; }
 header h1 { margin: 5px 0; font-size: 1.5em; }
 .summary { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
-.card { padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; min-width: 100px; flex: 1; color: white; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s, background 0.3s; }
+.card { padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; min-width: 100px; flex: 1; color: white; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s, background-color 0.5s; }
 .card span { margin-top: 5px; font-size: 1.1em; transition: transform 0.3s; }
 .income { background: #28a745; }
 .expense { background: #dc3545; }
@@ -22,8 +22,8 @@ button { cursor: pointer; }
 .btn-exp { background: #28a745; color: white; border: none; width: 100%; margin-top: 10px; }
 table { width: 100%; border-collapse: collapse; margin-top: 15px; display: block; overflow-x: auto; }
 table, th, td { border: 1px solid #ddd; }
-th { background: #28a745; color: white; padding: 10px; min-width: 100px; }
-td { text-align: center; padding: 8px; min-width: 100px; }
+th { background: #28a745; color: white; padding: 10px; min-width: 50px; }
+td { text-align: center; padding: 8px; min-width: 50px; }
 .aksi-btn { cursor: pointer; border: none; background: none; font-size: 16px; margin: 0 3px; }
 .aksi-btn.edit { color: #007bff; }
 .aksi-btn.delete { color: #dc3545; }
@@ -61,6 +61,7 @@ td { text-align: center; padding: 8px; min-width: 100px; }
 <table>
 <thead>
   <tr>
+    <th>No</th>
     <th>Tanggal</th>
     <th>Deskripsi</th>
     <th>Pemasukan</th>
@@ -88,11 +89,12 @@ function saveData() { localStorage.setItem("transactions", JSON.stringify(transa
 function formatRupiah(angka) { return "Rp " + angka.toLocaleString("id-ID"); }
 function parseRupiah(str) { return Number(str.replace(/[^0-9]/g, "")) || 0; }
 
-// animasi scale + flash
+// animasi scale + flash halus
 function animateCard(id){
   const el = document.getElementById(id);
-  el.style.transform = "scale(1.2)";
-  el.style.backgroundColor = "#ffd700"; // flash gold sementara
+  el.style.transform = "scale(1.15)";
+  el.style.transition = "transform 0.3s, background-color 0.5s";
+  el.style.backgroundColor = "rgba(255,215,0,0.4)";
   setTimeout(()=>{
     el.style.transform="scale(1)";
     if(id==="totalIncome") el.style.backgroundColor="#28a745";
@@ -110,6 +112,7 @@ function renderTable() {
     if(t.type==="pemasukan") totalIncome+=t.amount;
     else totalExpense+=t.amount;
     table.innerHTML += `<tr>
+      <td>${i+1}</td>
       <td>${t.date}</td>
       <td>${t.desc}</td>
       <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
@@ -150,21 +153,4 @@ function addTransaction(){
 }
 
 function deleteTransaction(i){ if(confirm("Yakin mau hapus transaksi ini?")){ transactions.splice(i,1); saveData(); renderTable(); } }
-function editTransaction(i){ let t=transactions[i]; let newDesc=prompt("Edit deskripsi:",t.desc); let newAmount=prompt("Edit jumlah:",t.amount); if(newDesc!==null&&newAmount!==null){ transactions[i].desc=newDesc; transactions[i].amount=parseRupiah(newAmount.toString()); saveData(); renderTable(); } }
-
-function exportExcel(){ let csv="Tanggal,Deskripsi,Pemasukan,Pengeluaran\n"; transactions.forEach(t=>{ csv+=`${t.date},${t.desc},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`; }); let blob=new Blob([csv],{type:"text/csv"}); let url=window.URL.createObjectURL(blob); let a=document.createElement("a"); a.href=url; a.download="laporan_keuangan.csv"; a.click(); }
-
-// perbaikan input jumlah kursor di belakang
-const amountInput=document.getElementById("amountInput");
-amountInput.addEventListener("input",(e)=>{
-  let value=parseRupiah(e.target.value);
-  e.target.value = value?formatRupiah(value):"";
-  e.target.setSelectionRange(e.target.value.length, e.target.value.length);
-});
-
-// render awal
-renderTable();
-</script>
-
-</body>
-</html>
+function editTransaction(i){ let t=transactions[i]; let newDesc=prompt("Edit deskripsi:",t.desc); let newAmount=prompt("Edit jumlah:",t.amount); if(newDesc!==null&&newAmount!==null){ transactions[i].desc=newDesc; transactions[i].
