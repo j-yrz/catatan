@@ -14,9 +14,9 @@ header h1 { margin: 5px 0; font-size: 1.5em; }
 .income { background: #28a745; }
 .expense { background: #dc3545; }
 .balance { background: #007bff; }
-.container { max-width: 900px; margin: 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.container { max-width: 1000px; margin: 20px auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 .form-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-input, select, button { padding: 8px; border-radius: 5px; border: 1px solid #ccc; flex: 1 1 100px; }
+input, select, button { padding: 8px; border-radius: 5px; border: 1px solid #ccc; flex: 1 1 120px; }
 button { cursor: pointer; }
 .btn-add { background: #007bff; color: white; border: none; }
 .btn-exp { background: #28a745; color: white; border: none; width: 100%; margin-top: 10px; }
@@ -51,6 +51,8 @@ td { text-align: center; padding: 8px; min-width: 50px; }
   <input type="date" id="dateInput">
   <input type="text" id="descInput" placeholder="Deskripsi">
   <input type="text" id="amountInput" placeholder="Jumlah">
+  <input type="text" id="memberInput" placeholder="Anggota">
+  <input type="text" id="sourceInput" placeholder="Sumber Dana">
   <select id="typeInput">
     <option value="pemasukan">Pemasukan</option>
     <option value="pengeluaran">Pengeluaran</option>
@@ -64,6 +66,8 @@ td { text-align: center; padding: 8px; min-width: 50px; }
     <th>No</th>
     <th>Tanggal</th>
     <th>Deskripsi</th>
+    <th>Anggota</th>
+    <th>Sumber Dana</th>
     <th>Pemasukan</th>
     <th>Pengeluaran</th>
     <th>Aksi</th>
@@ -89,18 +93,22 @@ function saveData() { localStorage.setItem("transactions", JSON.stringify(transa
 function formatRupiah(angka) { return "Rp " + angka.toLocaleString("id-ID"); }
 function parseRupiah(str) { return Number(str.replace(/[^0-9]/g, "")) || 0; }
 
-// animasi scale + flash halus
+// animasi flash gradual fade untuk setiap summary
 function animateCard(id){
   const el = document.getElementById(id);
-  el.style.transform = "scale(1.15)";
-  el.style.transition = "transform 0.3s, background-color 0.5s";
-  el.style.backgroundColor = "rgba(255,215,0,0.4)";
+  el.style.transition = "transform 0.3s, background-color 0.8s";
+  el.style.transform = "scale(1.1)";
+  let color;
+  if(id==="totalIncome") color = "#71d88a";
+  if(id==="totalExpense") color = "#f28c8c";
+  if(id==="balance") color = "#68b0f0";
+  el.style.backgroundColor = color;
   setTimeout(()=>{
     el.style.transform="scale(1)";
     if(id==="totalIncome") el.style.backgroundColor="#28a745";
     if(id==="totalExpense") el.style.backgroundColor="#dc3545";
     if(id==="balance") el.style.backgroundColor="#007bff";
-  },300);
+  },500);
 }
 
 function renderTable() {
@@ -115,6 +123,8 @@ function renderTable() {
       <td>${i+1}</td>
       <td>${t.date}</td>
       <td>${t.desc}</td>
+      <td>${t.member || ""}</td>
+      <td>${t.source || ""}</td>
       <td>${t.type==="pemasukan"?formatRupiah(t.amount):""}</td>
       <td>${t.type==="pengeluaran"?formatRupiah(t.amount):""}</td>
       <td>
@@ -141,13 +151,17 @@ function addTransaction(){
   const date = dateInput.value || today;
   const desc = document.getElementById("descInput").value;
   const amount = parseRupiah(document.getElementById("amountInput").value);
+  const member = document.getElementById("memberInput").value;
+  const source = document.getElementById("sourceInput").value;
   const type = document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
-  transactions.push({date,desc,amount,type});
+  transactions.push({date,desc,amount,type,member,source});
   saveData();
   renderTable();
   document.getElementById("descInput").value="";
   document.getElementById("amountInput").value="";
+  document.getElementById("memberInput").value="";
+  document.getElementById("sourceInput").value="";
   document.getElementById("typeInput").value="pemasukan";
   dateInput.value = today;
 }
@@ -157,18 +171,22 @@ function editTransaction(i){
   let t=transactions[i]; 
   let newDesc=prompt("Edit deskripsi:",t.desc); 
   let newAmount=prompt("Edit jumlah:",t.amount); 
+  let newMember=prompt("Edit anggota:",t.member || ""); 
+  let newSource=prompt("Edit sumber dana:",t.source || ""); 
   if(newDesc!==null && newAmount!==null){ 
     transactions[i].desc=newDesc; 
     transactions[i].amount=parseRupiah(newAmount.toString()); 
+    transactions[i].member=newMember; 
+    transactions[i].source=newSource; 
     saveData(); 
     renderTable(); 
   } 
 }
 
 function exportExcel(){ 
-  let csv="Tanggal,Deskripsi,Pemasukan,Pengeluaran\n"; 
+  let csv="Tanggal,Deskripsi,Anggota,Sumber Dana,Pemasukan,Pengeluaran\n"; 
   transactions.forEach(t=>{
-    csv+=`${t.date},${t.desc},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`; 
+    csv+=`${t.date},${t.desc},${t.member || ""},${t.source || ""},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`; 
   }); 
   let blob=new Blob([csv],{type:"text/csv"}); 
   let url=window.URL.createObjectURL(blob); 
