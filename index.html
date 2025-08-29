@@ -88,9 +88,9 @@
 <header>
   <h1>Laporan Keuangan</h1>
   <div class="summary">
-    <div class="card"><strong>Pemasukan</strong><br><span id="totalIncome">Rp 0</span></div>
-    <div class="card"><strong>Pengeluaran</strong><br><span id="totalExpense">Rp 0</span></div>
-    <div class="card"><strong>Saldo</strong><br><span id="balance">Rp 0</span></div>
+    <div class="card"><strong>Pemasukan</strong><br><span id="totalIncome">0</span></div>
+    <div class="card"><strong>Pengeluaran</strong><br><span id="totalExpense">0</span></div>
+    <div class="card"><strong>Saldo</strong><br><span id="balance">0</span></div>
   </div>
 </header>
 
@@ -129,10 +129,6 @@
     localStorage.setItem("transactions", JSON.stringify(transactions));
   }
 
-  function formatRupiah(angka) {
-    return "Rp " + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
-
   function renderTable() {
     const table = document.getElementById("transactionTable");
     table.innerHTML = "";
@@ -145,8 +141,8 @@
       let row = `<tr>
         <td>${t.date}</td>
         <td>${t.desc}</td>
-        <td>${t.type === "pemasukan" ? formatRupiah(t.amount) : ""}</td>
-        <td>${t.type === "pengeluaran" ? formatRupiah(t.amount) : ""}</td>
+        <td>${t.type === "pemasukan" ? t.amount : ""}</td>
+        <td>${t.type === "pengeluaran" ? t.amount : ""}</td>
         <td>
           <button class="aksi-btn edit" onclick="editTransaction(${i})">✏️</button>
           <button class="aksi-btn delete" onclick="deleteTransaction(${i})">🗑️</button>
@@ -155,9 +151,9 @@
       table.innerHTML += row;
     });
 
-    document.getElementById("totalIncome").innerText = formatRupiah(totalIncome);
-    document.getElementById("totalExpense").innerText = formatRupiah(totalExpense);
-    document.getElementById("balance").innerText = formatRupiah(totalIncome - totalExpense);
+    document.getElementById("totalIncome").innerText = totalIncome;
+    document.getElementById("totalExpense").innerText = totalExpense;
+    document.getElementById("balance").innerText = totalIncome - totalExpense;
   }
 
   function addTransaction() {
