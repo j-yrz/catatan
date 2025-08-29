@@ -155,11 +155,10 @@ function memberOptionChange(){
       saveData(); renderMembers();
     }
   } 
-  // reset ke default untuk input transaksi biasa
+  // Tidak reset dropdown saat pilih anggota biasa
   if(val !== "+" && val !== "-"){
-    // nothing, pilih anggota biasa tetap tersimpan saat addTransaction
+    // tetap bisa dipilih untuk transaksi
   }
-  memberSelect.value="";
 }
 
 function saveData(){ 
@@ -212,17 +211,17 @@ function addTransaction(){
   const date = dateInput.value;
   const desc = document.getElementById("descInput").value;
   const amount = parseRupiah(document.getElementById("amountInput").value);
-  let member = memberSelect.value;
+  const member = memberSelect.value;
   const source = document.getElementById("sourceInput").value;
   const type = document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
-  if(member==="+" || member==="-") member="";
-  transactions.push({date,desc,amount,type,member,source});
+  transactions.push({date,desc,amount,type,member:(member==="+"||member==="-")?"":member,source});
   saveData(); renderTable();
   document.getElementById("descInput").value="";
   document.getElementById("amountInput").value="";
   document.getElementById("sourceInput").value="";
   document.getElementById("typeInput").value="pemasukan";
+  memberSelect.value=""; // reset setelah tambah transaksi
 }
 
 function deleteTransaction(i){ if(confirm("Yakin mau hapus transaksi ini?")){ transactions.splice(i,1); saveData(); renderTable(); } }
