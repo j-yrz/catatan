@@ -268,12 +268,15 @@ function addMember(){
 }
 
 function deleteMember(){
-  const name = memberSelect.options[memberSelect.selectedIndex].text;
-  if(!name || name==="add" || name==="del") return;
+  if(members.length===0){ alert("Tidak ada anggota untuk dihapus."); return; }
+  const name = prompt("Ketik nama anggota yang ingin dihapus:", members[0]);
+  if(!name) return;
+  if(!members.includes(name)){ alert("Nama anggota tidak ditemukan."); return; }
   if(confirm(`Hapus anggota ${name}?`)){ 
     members = members.filter(m => m !== name); 
     saveData(); 
     renderMembers(); 
+    alert(`Anggota ${name} berhasil dihapus.`);
   }
 }
 
