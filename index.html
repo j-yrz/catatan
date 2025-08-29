@@ -228,4 +228,67 @@ function editTransaction(i){
   if(newDesc!==null && newAmount!==null){
     transactions[i].desc=newDesc;
     transactions[i].amount=parseRupiah(newAmount.toString());
-    transactions
+    transactions[i].member=newMember;
+    transactions[i].source=newSource;
+    saveData(); renderTable();
+  }
+}
+
+function exportExcel(){
+  let csv="Tanggal,Deskripsi,Anggota,Sumber Dana,Pemasukan,Pengeluaran\n";
+  transactions.forEach(t=>{
+    csv+=`${t.date},${t.desc},${t.member||""},${t.source||""},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`;
+  });
+  let blob=new Blob([csv],{type:"text/csv"});
+  let url=window.URL.createObjectURL(blob);
+  let a=document.createElement("a");
+  a.href=url;
+  a.download="laporan_keuangan.csv";
+  a.click();
+}
+
+// Input jumlah nyaman
+const amountInput=document.getElementById("amountInput");
+amountInput.addEventListener("input",(e)=>{
+  let value=parseRupiah(e.target.value);
+  e.target.value=value?formatRupiah(value):"";
+  e.target.setSelectionRange(e.target.value.length,e.target.value.length);
+});
+
+// Tambah/hapus anggota via menu dropdown
+function checkMemberOption(sel){
+  const value = sel.value;
+  if(value==="add") { addMember(); sel.value = members[0]||""; }
+  if(value==="del") { deleteMember(); sel.value = members[0]||""; }
+}
+
+function addMember(){
+  const name=prompt("Nama anggota baru:");
+  if(name && !members.includes(name)){ members.push(name); saveData(); renderMembers(); }
+}
+
+function deleteMember(){
+  const name = memberSelect.options[memberSelect.selectedIndex].text;
+  if(!name || name==="add" || name==="del") return;
+  if(confirm(`Hapus anggota ${name}?`)){ 
+    members = members.filter(m => m !== name); 
+    saveData(); 
+    renderMembers(); 
+  }
+}
+
+// Filter transaksi
+function applyFilter(){
+  const memberF=filterMember.value;
+  const typeF=document.getElementById("filterType").value;
+  const filtered = transactions.filter(t=>{
+    return (memberF==="all" || t.member===memberF) && (typeF==="all" || t.type===typeF);
+  });
+  renderTable(filtered);
+}
+
+// Render awal
+renderTable();
+</script>
+</body>
+</html>
