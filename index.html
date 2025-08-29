@@ -9,8 +9,8 @@ body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 
 header { text-align: center; padding: 20px 10px; }
 header h1 { margin: 5px 0; font-size: 1.5em; }
 .summary { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
-.card { padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; min-width: 100px; flex: 1; color: white; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.card span { margin-top: 5px; font-size: 1.1em; }
+.card { padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; min-width: 100px; flex: 1; color: white; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s, background 0.3s; }
+.card span { margin-top: 5px; font-size: 1.1em; transition: transform 0.3s; }
 .income { background: #28a745; }
 .expense { background: #dc3545; }
 .balance { background: #007bff; }
@@ -75,7 +75,7 @@ td { text-align: center; padding: 8px; min-width: 100px; }
 </div>
 
 <script>
-// set tanggal default hari ini
+// tanggal default
 const dateInput = document.getElementById("dateInput");
 const today = new Date().toISOString().slice(0,10);
 dateInput.value = today;
@@ -87,6 +87,19 @@ transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
 function saveData() { localStorage.setItem("transactions", JSON.stringify(transactions)); }
 function formatRupiah(angka) { return "Rp " + angka.toLocaleString("id-ID"); }
 function parseRupiah(str) { return Number(str.replace(/[^0-9]/g, "")) || 0; }
+
+// animasi scale + flash
+function animateCard(id){
+  const el = document.getElementById(id);
+  el.style.transform = "scale(1.2)";
+  el.style.backgroundColor = "#ffd700"; // flash gold sementara
+  setTimeout(()=>{
+    el.style.transform="scale(1)";
+    if(id==="totalIncome") el.style.backgroundColor="#28a745";
+    if(id==="totalExpense") el.style.backgroundColor="#dc3545";
+    if(id==="balance") el.style.backgroundColor="#007bff";
+  },300);
+}
 
 function renderTable() {
   const table = document.getElementById("transactionTable");
@@ -108,10 +121,17 @@ function renderTable() {
     </tr>`;
   });
 
-  // update summary otomatis
+  const oldIncome = document.getElementById("totalIncome").innerText;
+  const oldExpense = document.getElementById("totalExpense").innerText;
+  const oldBalance = document.getElementById("balance").innerText;
+
   document.getElementById("totalIncome").innerText = formatRupiah(totalIncome);
   document.getElementById("totalExpense").innerText = formatRupiah(totalExpense);
   document.getElementById("balance").innerText = formatRupiah(totalIncome - totalExpense);
+
+  if(formatRupiah(totalIncome)!==oldIncome) animateCard("totalIncome");
+  if(formatRupiah(totalExpense)!==oldExpense) animateCard("totalExpense");
+  if(formatRupiah(totalIncome - totalExpense)!==oldBalance) animateCard("balance");
 }
 
 function addTransaction(){
@@ -134,11 +154,15 @@ function editTransaction(i){ let t=transactions[i]; let newDesc=prompt("Edit des
 
 function exportExcel(){ let csv="Tanggal,Deskripsi,Pemasukan,Pengeluaran\n"; transactions.forEach(t=>{ csv+=`${t.date},${t.desc},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`; }); let blob=new Blob([csv],{type:"text/csv"}); let url=window.URL.createObjectURL(blob); let a=document.createElement("a"); a.href=url; a.download="laporan_keuangan.csv"; a.click(); }
 
-// format input jumlah otomatis
+// perbaikan input jumlah kursor di belakang
 const amountInput=document.getElementById("amountInput");
-amountInput.addEventListener("input",(e)=>{ let cursor=e.target.selectionStart; let value=parseRupiah(e.target.value); e.target.value=value?formatRupiah(value):""; e.target.selectionStart=e.target.selectionEnd=cursor; });
+amountInput.addEventListener("input",(e)=>{
+  let value=parseRupiah(e.target.value);
+  e.target.value = value?formatRupiah(value):"";
+  e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+});
 
-// render awal supaya summary muncul
+// render awal
 renderTable();
 </script>
 
