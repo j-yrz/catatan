@@ -58,9 +58,11 @@ td { text-align: center; padding: 8px; min-width: 50px; }
 
 <div class="container">
 <div class="member-group">
+  <input type="text" id="deleteMemberInput" placeholder="Ketik nama anggota">
+  <select id="deleteMemberDropdown"></select>
+  <button onclick="deleteMember()">Hapus Anggota</button>
   <input type="text" id="newMember" placeholder="Nama anggota baru">
   <button onclick="addMember()">Tambah Anggota</button>
-  <button onclick="deleteMember()">Hapus Anggota</button>
 </div>
 
 <div class="form-group">
@@ -120,6 +122,8 @@ transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
 
 const memberSelect = document.getElementById("memberSelect");
 const filterMember = document.getElementById("filterMember");
+const deleteDropdown = document.getElementById("deleteMemberDropdown");
+const deleteInput = document.getElementById("deleteMemberInput");
 
 function renderMembers(){
   memberSelect.innerHTML="<option value=''>Pilih anggota</option>";
@@ -127,6 +131,11 @@ function renderMembers(){
   members.forEach(m=>{
     memberSelect.innerHTML+=`<option value="${m}">${m}</option>`;
     filterMember.innerHTML+=`<option value="${m}">${m}</option>`;
+  });
+  // Dropdown delete anggota terbatas 3 nama terakhir
+  deleteDropdown.innerHTML="<option value=''>Pilih (max 3)</option>";
+  members.slice(-3).forEach(m=>{
+    deleteDropdown.innerHTML+=`<option value="${m}">${m}</option>`;
   });
 }
 renderMembers();
@@ -187,28 +196,21 @@ function renderTable(filtered=[]){
     </tr>`;
   });
 
-  const oldIncome=document.getElementById("totalIncome").innerText;
-  const oldExpense=document.getElementById("totalExpense").innerText;
-  const oldBalance=document.getElementById("balance").innerText;
-
   document.getElementById("totalIncome").innerText=formatRupiah(totalIncome);
   document.getElementById("totalExpense").innerText=formatRupiah(totalExpense);
   document.getElementById("balance").innerText=formatRupiah(totalIncome-totalExpense);
 
-  if(formatRupiah(totalIncome)!==oldIncome) animateCard("totalIncome");
-  if(formatRupiah(totalExpense)!==oldExpense) animateCard("totalExpense");
-  if(formatRupiah(totalIncome-totalExpense)!==oldBalance) animateCard("balance");
-
   renderChart();
 }
 
+// Fungsi transaksi
 function addTransaction(){
-  const date=dateInput.value||today;
-  const desc=document.getElementById("descInput").value;
-  const amount=parseRupiah(document.getElementById("amountInput").value);
-  const member=memberSelect.value;
-  const source=document.getElementById("sourceInput").value;
-  const type=document.getElementById("typeInput").value;
+  const date = dateInput.value||today;
+  const desc = document.getElementById("descInput").value;
+  const amount = parseRupiah(document.getElementById("amountInput").value);
+  const member = memberSelect.value;
+  const source = document.getElementById("sourceInput").value;
+  const type = document.getElementById("typeInput").value;
   if(!desc || amount<=0){ alert("Isi semua field dengan benar!"); return; }
   transactions.push({date,desc,amount,type,member,source});
   saveData(); renderTable();
@@ -223,11 +225,11 @@ function addTransaction(){
 function deleteTransaction(i){ if(confirm("Yakin mau hapus transaksi ini?")){ transactions.splice(i,1); saveData(); renderTable(); } }
 
 function editTransaction(i){
-  let t=transactions[i];
-  let newDesc=prompt("Edit deskripsi:",t.desc);
-  let newAmount=prompt("Edit jumlah:",t.amount);
-  let newMember=prompt("Edit anggota:",t.member||"");
-  let newSource=prompt("Edit sumber dana:",t.source||"");
+  let t = transactions[i];
+  let newDesc = prompt("Edit deskripsi:", t.desc);
+  let newAmount = prompt("Edit jumlah:", t.amount);
+  let newMember = prompt("Edit anggota:", t.member||"");
+  let newSource = prompt("Edit sumber dana:", t.source||"");
   if(newDesc!==null && newAmount!==null){
     transactions[i].desc=newDesc;
     transactions[i].amount=parseRupiah(newAmount.toString());
@@ -239,4 +241,49 @@ function editTransaction(i){
 
 function exportExcel(){
   let csv="Tanggal,Deskripsi,Anggota,Sumber Dana,Pemasukan,Pengeluaran\n";
- 
+  transactions.forEach(t=>{
+    csv+=`${t.date},${t.desc},${t.member||""},${t.source||""},${t.type==="pemasukan"?t.amount:""},${t.type==="pengeluaran"?t.amount:""}\n`;
+  });
+  let blob = new Blob([csv], { type: "text/csv" });
+  let url = window.URL.createObjectURL(blob);
+  let a = document.createElement("a");
+  a.href = url;
+  a.download = "laporan_keuangan.csv";
+  a.click();
+}
+
+// Fungsi anggota
+function addMember(){
+  const name = document.getElementById("newMember").value.trim();
+  if(!name){ alert("Masukkan nama anggota!"); return; }
+  if(!members.includes(name)) members.push(name);
+  document.getElementById("newMember").value="";
+  saveData(); renderMembers();
+}
+
+function deleteMember(){
+  let name = deleteInput.value.trim() || deleteDropdown.value;
+  if(!name){ alert("Pilih atau ketik nama anggota!"); return; }
+  if(!members.includes(name)){ alert("Nama anggota tidak ditemukan!"); return; }
+  if(confirm(`Hapus anggota ${name}? Transaksi lama tetap aman.`)){
+    members = members.filter(m=>m!==name);
+    saveData(); renderMembers();
+  }
+}
+
+// Fungsi filter
+function applyFilter(){
+  let fMember = filterMember.value;
+  let fType = document.getElementById("filterType").value;
+  let filtered = transactions.filter(t=>{
+    return (fMember==="all" || t.member===fMember) && (fType==="all" || t.type===fType);
+  });
+  renderTable(filtered);
+}
+
+// Init
+renderTable();
+</script>
+
+</body>
+</html>
