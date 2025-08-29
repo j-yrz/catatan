@@ -61,9 +61,7 @@ td { text-align: center; padding: 8px; min-width: 50px; }
   <input type="date" id="dateInput">
   <input type="text" id="descInput" placeholder="Deskripsi">
   <input type="text" id="amountInput" placeholder="Jumlah">
-  <select id="memberSelect"></select>
-  <button type="button" onclick="addMember()">➕ Anggota</button>
-  <button type="button" onclick="deleteMember()">🗑️ Anggota</button>
+  <select id="memberSelect" onchange="checkMemberOption(this)"></select>
   <input type="text" id="sourceInput" placeholder="Sumber Dana">
   <select id="typeInput">
     <option value="pemasukan">Pemasukan</option>
@@ -118,6 +116,7 @@ transactions = transactions.map(t => ({ ...t, amount: Number(t.amount) || 0 }));
 
 const memberSelect = document.getElementById("memberSelect");
 const filterMember = document.getElementById("filterMember");
+
 function renderMembers(){
   memberSelect.innerHTML="";
   filterMember.innerHTML='<option value="all">Semua Anggota</option>';
@@ -125,6 +124,8 @@ function renderMembers(){
     memberSelect.innerHTML+=`<option value="${m}">${m}</option>`;
     filterMember.innerHTML+=`<option value="${m}">${m}</option>`;
   });
+  memberSelect.innerHTML+=`<option value="add">➕ Tambah Anggota</option>`;
+  memberSelect.innerHTML+=`<option value="del">🗑️ Hapus Anggota</option>`;
 }
 renderMembers();
 
@@ -254,11 +255,17 @@ amountInput.addEventListener("input",(e)=>{
   e.target.setSelectionRange(e.target.value.length,e.target.value.length);
 });
 
-// Tambah/hapus anggota
+// Tambah/hapus anggota via menu dropdown
+function checkMemberOption(sel){
+  if(sel.value==="add") { addMember(); sel.value=members[0]||""; }
+  if(sel.value==="del") { deleteMember(); sel.value=members[0]||""; }
+}
+
 function addMember(){
   const name=prompt("Nama anggota baru:");
   if(name && !members.includes(name)){ members.push(name); saveData(); renderMembers(); }
 }
+
 function deleteMember(){
   const name=memberSelect.value;
   if(name && confirm(`Hapus anggota ${name}?`)){ members=members.filter(m=>m!==name); saveData(); renderMembers(); }
